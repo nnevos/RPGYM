@@ -5033,3 +5033,96 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .profile-radar-section canvas{width:min(240px,78vw)!important;max-width:240px!important}
   .profile-attributes-section{padding-inline:12px}
 }
+
+
+/* v0.2.2 — Roadmaps permanentes de atributos */
+.attribute-roadmap-section{padding:14px 14px 4px;background:#1b1d23}
+.attribute-roadmap-section .profile-section-title-row{align-items:flex-start;margin-bottom:10px}
+.attribute-roadmap-section .profile-section-title-row>div{display:grid;gap:2px}
+.attribute-roadmap-section .profile-section-title-row h3{margin:0;color:#fff;font-size:.78rem}
+.attribute-roadmap-section .profile-section-title-row p{margin:0;color:#8e94a0;font-size:.56rem}
+.attribute-roadmap-section .profile-section-title-row small{color:#b5a4ff;font-size:.58rem;font-weight:800}
+.attribute-roadmap-list{display:grid;gap:10px}
+.roadmap-chapter{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.09);background:#23262d;box-shadow:none}
+.roadmap-chapter.is-ready{border-color:rgba(216,255,98,.45)}
+.roadmap-chapter.is-claimed{border-color:rgba(121,87,255,.32);background:#22242b}
+.roadmap-chapter-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.roadmap-chapter-head>div{display:grid;gap:2px;min-width:0}
+.roadmap-chapter-head small{color:#9181d9;font-size:.5rem;font-weight:900;letter-spacing:.06em}
+.roadmap-chapter-head strong{color:#f4f5f7;font-size:.7rem}
+.roadmap-chapter-head>span{flex:0 0 auto;padding:4px 7px;border-radius:999px;background:#30333b;color:#b9bec8;font-size:.5rem;font-weight:800}
+.roadmap-chapter.is-ready .roadmap-chapter-head>span{background:rgba(216,255,98,.12);color:#d8ff62}
+.roadmap-chapter.is-claimed .roadmap-chapter-head>span{background:rgba(121,87,255,.15);color:#b9a8ff}
+.roadmap-objectives{display:grid;gap:8px}
+.roadmap-objective{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start}
+.roadmap-check{width:20px;height:20px;display:grid;place-items:center;border-radius:6px;border:1px solid #4a4e58;color:#17191f;font-size:.58rem;font-weight:950}
+.roadmap-objective.is-complete .roadmap-check{border-color:#d8ff62;background:#d8ff62}
+.roadmap-objective>div{display:grid;grid-template-columns:1fr auto;gap:3px 8px;align-items:center;min-width:0}
+.roadmap-objective strong{font-size:.59rem;color:#dfe2e7;font-weight:700;line-height:1.25}
+.roadmap-objective small{font-size:.52rem;color:#9399a5;font-weight:750;white-space:nowrap}
+.roadmap-objective i{grid-column:1/-1;height:4px;overflow:hidden;border-radius:999px;background:#363a43}
+.roadmap-objective i b{display:block;height:100%;border-radius:inherit;background:#7c5cff}
+.roadmap-objective.is-complete i b{background:#d8ff62}
+.roadmap-reward{display:flex;justify-content:space-between;gap:10px;margin-top:11px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}
+.roadmap-reward span{font-size:.52rem;color:#8e94a0}
+.roadmap-reward strong{font-size:.57rem;color:#d8ff62}
+.roadmap-chapter>button{width:100%;min-height:34px;margin-top:9px;border:0;border-radius:9px;background:#7957ff;color:#fff;font-size:.58rem;font-weight:900;box-shadow:none}
+.roadmap-chapter>button:disabled{background:#30333b;color:#777d87;opacity:1}
+.roadmap-chapter.is-claimed>button:disabled{background:rgba(121,87,255,.12);color:#aa98ff}
+.attribute-mission-list-section .profile-section-title-row>div{display:grid;gap:2px}
+.attribute-mission-list-section .profile-section-title-row p{margin:0;color:#8e94a0;font-size:.56rem}
+
+/* v0.2.3 — conquistas e badges */
+.profile-achievements-section {
+  margin-top: 18px;
+}
+.profile-achievements-section .profile-section-title-row p {
+  margin: 3px 0 0;
+  color: var(--text-muted, #9b9ba8);
+  font-size: .76rem;
+}
+.profile-achievements-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.achievement-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+}
+.achievement-card.is-locked { opacity: .56; }
+.achievement-card.is-unlocked {
+  border-color: rgba(187,255,72,.25);
+  background: linear-gradient(145deg, rgba(187,255,72,.07), rgba(255,255,255,.025));
+}
+.achievement-badge {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: rgba(255,255,255,.07);
+  color: #d8ff73;
+  font-weight: 900;
+}
+.achievement-card small,
+.achievement-card strong,
+.achievement-card p,
+.achievement-card em { display: block; min-width: 0; }
+.achievement-card small { color: #a9a9b4; font-size: .68rem; }
+.achievement-card strong { margin-top: 2px; color: #f5f5f7; font-size: .9rem; line-height: 1.15; }
+.achievement-card p { margin: 5px 0 0; color: #a9a9b4; font-size: .72rem; line-height: 1.35; }
+.achievement-card em { margin-top: 7px; color: #d8ff73; font-size: .68rem; font-style: normal; font-weight: 800; }
+.achievement-card.is-locked em { color: #777785; }
+@media (max-width: 620px) {
+  .profile-achievements-list { grid-template-columns: 1fr; }
+  .achievement-card { padding: 11px; }
+}

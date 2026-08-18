@@ -7,8 +7,28 @@
 <meta content="#0b0d13" name="theme-color"/>
 <meta content="RPG GYM: transforme treinos e hábitos saudáveis em uma jornada de evolução." name="description"/>
 <title>RPG GYM</title>
-<link href="style.css" rel="stylesheet"/>
-<script defer="" src="exercises.js"></script><script defer="" src="foods.js"></script><script defer="" src="script.js"></script>
+<link href="css/style.css" rel="stylesheet"/>
+<script defer src="js/data/exercises.js"></script>
+<script defer src="js/data/foods.js"></script>
+<script defer src="js/config/game-config.js"></script>
+<script defer src="js/config/roadmap-data.js"></script>
+<script defer src="js/config/mission-data.js"></script>
+<script defer src="js/config/achievement-data.js"></script>
+<script defer src="js/config/ui-config.js"></script>
+<script defer src="js/config/cardio-data.js"></script>
+<script defer src="js/core/runtime.js"></script>
+<script defer src="js/core/helpers.js"></script>
+<script defer src="js/core/state.js"></script>
+<script defer src="js/core/missions.js"></script>
+<script defer src="js/core/progression.js"></script>
+<script defer src="js/core/roadmaps-achievements.js"></script>
+<script defer src="js/ui/views.js"></script>
+<script defer src="js/systems/cardio.js"></script>
+<script defer src="js/systems/workouts.js"></script>
+<script defer src="js/systems/social.js"></script>
+<script defer src="js/systems/diet.js"></script>
+<script defer src="js/ui/interactions.js"></script>
+<script defer src="js/app.js"></script>
 </head>
 <body>
 <noscript>
@@ -387,6 +407,14 @@
       </div>
       <div class="profile-attribute-buttons" id="characterAttributeList"></div>
     </section>
+
+    <section class="profile-achievements-section" aria-labelledby="profileAchievementsTitle">
+      <div class="profile-section-title-row">
+        <div><h3 id="profileAchievementsTitle">Conquistas</h3><p>Badges permanentes da sua jornada</p></div>
+        <small id="profileAchievementsCount">0/13</small>
+      </div>
+      <div class="profile-achievements-list" id="profileAchievementsList"></div>
+    </section>
   </div>
 
   <section class="attribute-missions-page" id="attributeMissionsPanel" hidden aria-labelledby="attributeMissionTitle">
@@ -409,10 +437,17 @@
       </div>
       <div class="progress-track attribute-mission-xpbar"><span id="attributeMissionXpBar" style="width:0%"></span></div>
     </section>
+    <section class="attribute-roadmap-section">
+      <div class="profile-section-title-row">
+        <div><h3>Roadmap</h3><p>Objetivos permanentes • progresso da conta</p></div>
+        <small id="attributeRoadmapCount">0/2 capítulos</small>
+      </div>
+      <div class="attribute-roadmap-list" id="attributeRoadmapList"></div>
+    </section>
     <section class="attribute-mission-list-section">
       <div class="profile-section-title-row">
-        <h3>Missões do atributo</h3>
-        <small id="attributeMissionCount">0 missões</small>
+        <div><h3>Missões rotativas</h3><p>Diárias e semanais deste atributo</p></div>
+        <small id="attributeMissionCount">0 rotativas</small>
       </div>
       <div class="attribute-mission-list" id="attributeMissionList"></div>
     </section>

@@ -1,0 +1,550 @@
+"use strict";
+
+function calculateRequiredXP(level) {
+  if (level >= MAX_LEVEL) {
+    return 0;
+  }
+  return Math.ceil(100 * Math.pow(level, 1.2));
+}
+
+function calculateGlobalLevel() {
+  const totalLevels = Object.values(state.attributes).reduce(
+    (sum, attribute) => sum + attribute.level,
+    0
+  );
+  return Math.min(MAX_LEVEL, Math.ceil(totalLevels / Object.keys(ATTRIBUTES).length));
+}
+
+function calculateJourneyPercent() {
+  const totalProgress = Object.values(state.attributes).reduce((sum, attribute) => {
+    if (attribute.level >= MAX_LEVEL) {
+      return sum + (MAX_LEVEL - 1);
+    }
+
+    const requiredXp = calculateRequiredXP(attribute.level);
+    const fractionalLevel = requiredXp > 0 ? attribute.xp / requiredXp : 0;
+    return sum + (attribute.level - 1) + fractionalLevel;
+  }, 0);
+
+  const maximumProgress = (MAX_LEVEL - 1) * Object.keys(ATTRIBUTES).length;
+  return maximumProgress > 0
+    ? Math.min(100, Math.max(0, (totalProgress / maximumProgress) * 100))
+    : 0;
+}
+
+function syncDerivedState() {
+  Object.keys(ATTRIBUTES).forEach((attributeKey) => {
+    const attribute = state.attributes[attributeKey];
+    attribute.level = clampInteger(attribute.level, 1, MAX_LEVEL);
+
+    if (attribute.level >= MAX_LEVEL) {
+      attribute.xp = 0;
+    } else {
+      attribute.xp = Math.max(0, Number(attribute.xp) || 0);
+    }
+
+    attribute.milestones = MILESTONE_LEVELS.filter(
+      (milestone) => milestone <= attribute.level
+    );
+    attribute.classStage = Math.min(5, Math.floor(attribute.level / 10));
+  });
+
+  state.player.globalLevel = calculateGlobalLevel();
+  state.player.title = getCurrentGlobalTitle();
+}
+
+function getActivityAttribute(activityId, options = {}) {
+  if (activityId === "cardio") {
+    return CARDIO_TYPES[options.type]?.attribute || options.mode || "constitution";
+  }
+  return ACTIVITIES[activityId]?.attribute || "constitution";
+}
+
+function calculateActivityXp(activityId, options = {}) {
+  const activity = ACTIVITIES[activityId];
+  if (!activity) {
+    throw new Error(`Atividade desconhecida: ${activityId}`);
+  }
+
+  const attributeKey = getActivityAttribute(activityId, options);
+  const attribute = state.attributes[attributeKey];
+  let baseXp = activity.baseXp;
+  const breakdown = [];
+
+  if (activityId === "cardio") {
+    const minutes = Math.max(1, Number(options.minutes) || 1);
+    const distanceKm = Math.max(0, Number(options.distance) || (Number(options.distanceMeters) || 0) / 1000);
+    const isAgility = attributeKey === "agility";
+    // Mantém o balanceamento atual: tempo é a base; distância dá um bônus pequeno.
+    baseXp = minutes < 30 ? Math.max(5, Math.round((minutes / 30) * 20)) : 20 + Math.floor(minutes - 30);
+    baseXp += Math.min(isAgility ? 20 : 15, Math.floor(distanceKm * (isAgility ? 2 : 1)));
+  }
+
+  const levelBonus = Math.min(0.5, attribute.level * 0.01);
+  if (levelBonus > 0) {
+    breakdown.push({
+      label: `Nível de ${ATTRIBUTES[attributeKey].name}`,
+      value: levelBonus
+    });
+  }
+
+  const classBonus = getClassBonus(attributeKey);
+  if (classBonus > 0) {
+    breakdown.push({
+      label: ATTRIBUTES[attributeKey].className,
+      value: classBonus
+    });
+  }
+
+  if (activityId === "heavySet" && options.compound) {
+    breakdown.push({ label: "Exercício composto", value: 0.10 });
+  }
+
+  const intelligenceHabitBonus = getIntelligenceHabitBonus(activity);
+  if (intelligenceHabitBonus > 0) {
+    breakdown.push({ label: "Mago mestre", value: intelligenceHabitBonus });
+  }
+
+  getActiveBuffs().forEach((buff) => {
+    breakdown.push({
+      label: buff.source || "Buff semanal",
+      value: Math.max(0, Number(buff.multiplier) - 1)
+    });
+  });
+
+  const rawBonus = breakdown.reduce((sum, item) => sum + item.value, 0);
+  const appliedBonus = Math.min(0.5, rawBonus);
+  const xp = Math.max(1, Math.round(baseXp * (1 + appliedBonus)));
+
+  return {
+    xp,
+    baseXp,
+    rawBonus,
+    appliedBonus,
+    capped: rawBonus > 0.5,
+    breakdown,
+    attributeKey
+  };
+}
+
+function getClassBonus(attributeKey) {
+  const attribute = state.attributes[attributeKey];
+  const definition = ATTRIBUTES[attributeKey];
+  if (!isClassUnlocked(attributeKey)) return 0;
+  if (isRoadmapChapterClaimed(attributeKey, `${attributeKey}_50`)) return definition.masterBonus;
+  return definition.unlockBonus;
+}
+
+function getIntelligenceHabitBonus(activity) {
+  if (activity.attribute === "intelligence") {
+    return 0;
+  }
+
+  const intelligence = state.attributes.intelligence;
+  return intelligence.level >= 50 && isRoadmapChapterClaimed("intelligence", "intelligence_50") && activity.category === "habit" ? 0.20 : 0;
+}
+
+function getActiveBuffs() {
+  const now = Date.now();
+  return state.buffs.filter(
+    (buff) => new Date(buff.expiresAt).getTime() > now
+  );
+}
+
+function registerActivity(activityId) {
+  const activity = ACTIVITIES[activityId];
+  if (!activity) {
+    showToast("Atividade inválida", "Não foi possível encontrar essa ação.", "⚠");
+    return;
+  }
+
+  if (activityId === "weeklyStreak") {
+    const eligibility = getWeeklyStreakEligibility();
+    if (!eligibility.eligible) {
+      showToast("Recompensa bloqueada", eligibility.message, "🔒");
+      return;
+    }
+  }
+
+  const options = readActivityOptions(activityId);
+  const calculation = calculateActivityXp(activityId, options);
+  const now = new Date();
+  const effectiveAttribute = calculation.attributeKey || activity.attribute;
+  const progressEvents = addXP(
+    effectiveAttribute,
+    calculation.xp,
+    activity.name
+  );
+
+  const streakUpdate = updateStreak(now);
+
+  if (activityId === "weeklyStreak") {
+    state.streak.lastWeeklyRewardDate = localDateKey(now);
+  }
+
+  const details = buildActivityDetails(activityId, options, calculation);
+  const historyEntry = {
+    id: createId(),
+    kind: "activity",
+    activityId,
+    activityName: activityId === "cardio" ? (CARDIO_TYPES[options.type]?.label || activity.name) : activity.name,
+    attribute: effectiveAttribute,
+    xp: calculation.xp,
+    baseXp: calculation.baseXp,
+    bonusPercent: calculation.appliedBonus,
+    details,
+    ...(activityId === "cardio" ? { cardioData: { ...options } } : {}),
+    timestamp: now.toISOString(),
+    dateKey: localDateKey(now)
+  };
+
+  state.history.unshift(historyEntry);
+  state.history = state.history.slice(0, 1_000);
+  rebuildStatsFromSources();
+
+  const newlyCompletedMissions = refreshMissionProgress();
+  syncDerivedState();
+  saveGame();
+  updateUI();
+
+  showToast(
+    `+${formatNumber(calculation.xp)} XP em ${ATTRIBUTES[effectiveAttribute].name}`,
+    calculation.capped
+      ? `${activity.name} registrado. O bônus total atingiu o limite de +50%.`
+      : `${activity.name} registrado com sucesso.`,
+    activity.icon
+  );
+
+  if (streakUpdate.changed) {
+    showToast(
+      streakUpdate.reset ? "Novo streak iniciado" : "Streak aumentado",
+      `Sequência atual: ${state.streak.current} ${pluralize(state.streak.current, "dia", "dias")}.`,
+      "🔥"
+    );
+  }
+
+  newlyCompletedMissions.forEach((mission) => {
+    showToast(
+      "Missão concluída",
+      `${mission.name} está pronta para resgate.`,
+      "✦"
+    );
+  });
+
+  presentProgressEvents(progressEvents);
+}
+
+function readActivityOptions(activityId) {
+  switch (activityId) {
+    case "heavySet":
+      return {
+        compound: Boolean(document.getElementById("compoundExercise")?.checked)
+      };
+    case "cardio": {
+      const type = pendingCardioRecord?.type || document.getElementById("cardioMode")?.value || "treadmill";
+      const config = CARDIO_TYPES[type] || CARDIO_TYPES.treadmill;
+      const values = pendingCardioRecord?.values || {};
+      const minutes = pendingCardioRecord?.minutes || Math.max(1, getCurrentCardioElapsedMs() / 60000);
+      return { type, mode: config.attribute, minutes, ...values };
+    }
+    case "meal":
+      return {
+        mealType: document.getElementById("mealType")?.value || "Refeição"
+      };
+    case "groupTraining":
+      return {
+        groupName: (document.getElementById("groupName")?.value || "").trim()
+      };
+    default:
+      return {};
+  }
+}
+
+function buildActivityDetails(activityId, options, calculation) {
+  const details = [];
+
+  if (activityId === "heavySet" && options.compound) {
+    details.push("Exercício composto");
+  }
+  if (activityId === "cardio") {
+    const config = CARDIO_TYPES[options.type] || CARDIO_TYPES.treadmill;
+    details.push(config.label);
+    details.push(formatCardioDuration((Number(options.minutes) || 0) * 60000));
+    if (Number(options.distance) > 0) details.push(`${formatDecimal(options.distance, 2)} km`);
+    if (Number(options.distanceMeters) > 0) details.push(`${formatNumber(Math.round(options.distanceMeters))} m`);
+    if (Number(options.speed) > 0) details.push(`${formatDecimal(options.speed, 1)} km/h`);
+    if (Number(options.incline) > 0) details.push(`${formatDecimal(options.incline, 1)}% incl.`);
+    if (Number(options.resistance) > 0) details.push(`nível ${formatDecimal(options.resistance, 0)}`);
+    if (Number(options.rpm) > 0) details.push(`${formatDecimal(options.rpm, 0)} RPM`);
+    if (Number(options.floors) > 0) details.push(`${formatNumber(Math.round(options.floors))} andares`);
+    if (Number(options.jumps) > 0) details.push(`${formatNumber(Math.round(options.jumps))} saltos`);
+    const pace = getCardioDerivedMetric(options);
+    if (pace) details.push(pace);
+  }
+  if (activityId === "meal") {
+    details.push(options.mealType);
+  }
+  if (activityId === "groupTraining" && options.groupName) {
+    details.push(options.groupName);
+  }
+  if (calculation.appliedBonus > 0) {
+    details.push(`bônus +${Math.round(calculation.appliedBonus * 100)}%`);
+  }
+
+  return details.join(" • ");
+}
+
+function addXP(attributeKey, amount, source = "Atividade") {
+  const attribute = state.attributes[attributeKey];
+  const definition = ATTRIBUTES[attributeKey];
+  const xpAmount = Math.max(0, Math.round(Number(amount) || 0));
+  const events = [];
+
+  state.stats.totalXp += xpAmount;
+
+  if (attribute.level >= MAX_LEVEL || xpAmount <= 0) {
+    return events;
+  }
+
+  attribute.xp += xpAmount;
+
+  while (attribute.level < MAX_LEVEL) {
+    const requiredXp = calculateRequiredXP(attribute.level);
+    if (attribute.xp < requiredXp) {
+      break;
+    }
+
+    attribute.xp -= requiredXp;
+    attribute.level += 1;
+    events.push({
+      type: "level",
+      attribute: attributeKey,
+      level: attribute.level,
+      source
+    });
+
+    if (MILESTONE_LEVELS.includes(attribute.level)) {
+      events.push({
+        type: "milestone",
+        attribute: attributeKey,
+        level: attribute.level
+      });
+    }
+
+  }
+
+  if (attribute.level >= MAX_LEVEL) {
+    attribute.level = MAX_LEVEL;
+    attribute.xp = 0;
+  }
+
+  syncDerivedState();
+  return events;
+}
+
+function updateStreak(date = new Date()) {
+  const today = localDateKey(date);
+  const previousDate = state.streak.lastActiveDate;
+
+  if (previousDate === today) {
+    return { changed: false, reset: false };
+  }
+
+  let reset = false;
+  if (!previousDate) {
+    state.streak.current = 1;
+    reset = true;
+  } else {
+    const difference = daysBetweenDateKeys(previousDate, today);
+    if (difference === 1) {
+      state.streak.current += 1;
+    } else {
+      state.streak.current = 1;
+      reset = true;
+    }
+  }
+
+  state.streak.lastActiveDate = today;
+  state.streak.best = Math.max(state.streak.best, state.streak.current);
+
+  return { changed: true, reset };
+}
+
+function getWeeklyStreakEligibility() {
+  const today = localDateKey();
+
+  if (state.streak.current < 7) {
+    const remaining = 7 - state.streak.current;
+    return {
+      eligible: false,
+      message: `Faltam ${remaining} ${pluralize(remaining, "dia", "dias")} de streak para liberar.`
+    };
+  }
+
+  if (state.streak.lastWeeklyRewardDate) {
+    const sinceLastReward = daysBetweenDateKeys(
+      state.streak.lastWeeklyRewardDate,
+      today
+    );
+    if (sinceLastReward < 7) {
+      const remaining = 7 - sinceLastReward;
+      return {
+        eligible: false,
+        message: `Recompensa já resgatada. Nova liberação em ${remaining} ${pluralize(remaining, "dia", "dias")}.`
+      };
+    }
+  }
+
+  return {
+    eligible: true,
+    message: "Streak de 7 dias completo. Recompensa pronta!"
+  };
+}
+
+function claimMission(missionId) {
+  const mission = [...state.missions.daily, ...state.missions.weekly].find(
+    (candidate) => candidate.id === missionId
+  );
+
+  if (!mission || mission.status !== "completed") {
+    showToast(
+      "Recompensa indisponível",
+      "Complete todos os requisitos antes de resgatar.",
+      "🔒"
+    );
+    return;
+  }
+
+  let progressEvents = [];
+  let rewardMessage = "Recompensa adicionada.";
+
+  if (mission.reward.type === "xp") {
+    progressEvents = addXP(
+      mission.reward.attribute,
+      mission.reward.amount,
+      `Missão: ${mission.name}`
+    );
+    rewardMessage = `+${formatNumber(mission.reward.amount)} XP em ${ATTRIBUTES[mission.reward.attribute].name}.`;
+  }
+
+  if (mission.reward.type === "buff") {
+    const durationMs = mission.reward.durationHours * 60 * 60 * 1_000;
+    state.buffs.push({
+      id: createId(),
+      multiplier: mission.reward.multiplier,
+      source: mission.name,
+      activatedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + durationMs).toISOString()
+    });
+    rewardMessage = `Bônus de ${formatMultiplier(mission.reward.multiplier)} XP ativo por ${mission.reward.durationHours}h.`;
+  }
+
+  mission.status = "claimed";
+  state.stats.claimedMissionRewards += 1;
+  recordMissionClaim(mission);
+  rebuildStatsFromSources();
+  syncDerivedState();
+  saveGame();
+  updateUI();
+
+  showToast("Recompensa resgatada", rewardMessage, "🎁");
+  presentProgressEvents(progressEvents);
+}
+
+function presentProgressEvents(events) {
+  if (!events.length) {
+    return;
+  }
+
+  const classEvents = events.filter((event) => event.type === "class");
+  const milestoneEvents = events.filter((event) => event.type === "milestone");
+  const levelEvents = events.filter((event) => event.type === "level");
+
+  if (classEvents.length) {
+    const event = classEvents[classEvents.length - 1];
+    const definition = ATTRIBUTES[event.attribute];
+    const master = event.level >= 50;
+    queueCelebration({
+      icon: definition.icon,
+      kicker: master ? "Classe dominada" : "Classe evoluída",
+      title: master
+        ? `${definition.className} mestre!`
+        : `${definition.className} ${romanNumeral(event.level / 10)} desbloqueado`,
+      message: master
+        ? `${definition.masterTitle} conquistado no nível 50 de ${definition.name}.`
+        : `${definition.name} alcançou o marco de nível ${event.level}.`
+    });
+    return;
+  }
+
+  if (milestoneEvents.length) {
+    const event = milestoneEvents[milestoneEvents.length - 1];
+    const definition = ATTRIBUTES[event.attribute];
+    queueCelebration({
+      icon: "✦",
+      kicker: "Novo marco",
+      title: `${definition.name} nível ${event.level}`,
+      message: `A afinidade com ${definition.mentor} aumentou e uma nova etapa foi liberada.`
+    });
+    return;
+  }
+
+  if (levelEvents.length) {
+    const event = levelEvents[levelEvents.length - 1];
+    const definition = ATTRIBUTES[event.attribute];
+    queueCelebration({
+      icon: definition.icon,
+      kicker: "Level up",
+      title: `${definition.name} nível ${event.level}`,
+      message:
+        levelEvents.length > 1
+          ? `Você avançou ${levelEvents.length} níveis com uma única recompensa.`
+          : "Seu personagem ficou mais forte."
+    });
+  }
+}
+
+function queueCelebration(data) {
+  celebrationQueue.push(data);
+  if (!celebrationOpen) {
+    displayNextCelebration();
+  }
+}
+
+function displayNextCelebration() {
+  const celebration = document.getElementById("celebration");
+  const next = celebrationQueue.shift();
+
+  if (!celebration || !next) {
+    celebrationOpen = false;
+    return;
+  }
+
+  celebrationOpen = true;
+  celebrationReturnFocus = document.activeElement;
+  setText("celebrationIcon", next.icon || "✦");
+  setText("celebrationKicker", next.kicker || "Evolução");
+  setText("celebrationTitle", next.title || "Level up!");
+  setText(
+    "celebrationMessage",
+    next.message || "Seu personagem ficou mais forte."
+  );
+  celebration.hidden = false;
+  document.getElementById("closeCelebrationButton")?.focus();
+}
+
+function closeCelebration() {
+  const celebration = document.getElementById("celebration");
+  if (!celebration) {
+    return;
+  }
+
+  celebration.hidden = true;
+  celebrationOpen = false;
+
+  if (celebrationReturnFocus instanceof HTMLElement) {
+    celebrationReturnFocus.focus({ preventScroll: true });
+  }
+
+  window.setTimeout(displayNextCelebration, 160);
+}
