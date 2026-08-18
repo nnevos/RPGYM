@@ -6,6 +6,7 @@
   const MAX_LEVEL = 50;
   const MILESTONE_LEVELS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
   const DAY_MS = 86_400_000;
+  const PROFILE_ATTRIBUTE_ORDER = ["force", "agility", "constitution", "determination", "intelligence", "charisma"];
 
   const ATTRIBUTES = Object.freeze({
     force: {
@@ -155,6 +156,7 @@
 
   const EXERCISE_DATABASE = Object.freeze(window.RPG_GYM_EXERCISES || []);
   const FOOD_DATABASE = Object.freeze(window.RPG_GYM_FOODS || []);
+  const FOOD_COMMON_DATABASE = Object.freeze(FOOD_DATABASE.filter((food) => food.common !== false));
   const DIET_STORAGE_KEY = "rpgGymDiet_v1";
 
   const DAILY_MISSION_TEMPLATES = Object.freeze([
@@ -305,6 +307,7 @@
 
   let state;
   let activeView = "social";
+  let activeProfileAttribute = "force";
   let profileHydrated = false;
   let celebrationOpen = false;
   let celebrationQueue = [];
@@ -1690,101 +1693,128 @@
 
   function renderCharacter() {
     const initials = getInitials(state.player.name);
-    const milestoneCount = Object.values(state.attributes).reduce(
-      (sum, attribute) => sum + attribute.milestones.length,
-      0
-    );
-    const classCount = getUnlockedClassCount();
-
     setText("characterAvatar", initials);
-    setText("characterLevelBadge", state.player.globalLevel);
-    setText("characterHeading", state.player.name || "Jogador");
-    setText("characterTitle", state.player.title);
-    setText("characterTotalXp", formatNumber(state.stats.totalXp));
-    setText("characterMilestoneCount", milestoneCount);
-    setText("characterClassCount", classCount);
+    setText("profilePlayerName", state.player.name || "Jogador");
+    setText("characterHeading", "Meu Perfil");
+    setText("characterTitle", state.player.title || "Novato");
 
-    Object.keys(ATTRIBUTES).forEach((attributeKey) => {
-      setText(`map-${attributeKey}`, `Nv. ${state.attributes[attributeKey].level}`);
-    });
+    const weight = state.profile?.weight ? `${String(state.profile.weight).replace(".", ",")} kg` : "—";
+    const heightValue = Number(state.profile?.height || 0);
+    const height = heightValue > 0 ? `${(heightValue / 100).toFixed(2).replace(".", ",")} m` : "—";
+    setText("profileWeightSummary", weight);
+    setText("profileHeightSummary", height);
+    setText("profileClassSummary", getProfileClassSummary());
 
     const attributeList = document.getElementById("characterAttributeList");
     if (attributeList) {
-      attributeList.innerHTML = Object.keys(ATTRIBUTES)
+      attributeList.innerHTML = PROFILE_ATTRIBUTE_ORDER
         .map((attributeKey) => renderCharacterAttributeCard(attributeKey))
         .join("");
     }
 
-    const classCollection = document.getElementById("characterClassCollection");
-    if (classCollection) {
-      classCollection.innerHTML = Object.keys(ATTRIBUTES)
-        .map((attributeKey) => renderClassCollectionItem(attributeKey))
-        .join("");
-    }
-
-    const titleList = document.getElementById("titleChipList");
-    if (titleList) {
-      const titles = getUnlockedTitles();
-      titleList.innerHTML = titles
-        .map(
-          (title, index) =>
-            `<span class="title-chip ${index === titles.length - 1 ? "featured" : ""}"><span aria-hidden="true">✦</span>${escapeHtml(title)}</span>`
-        )
-        .join("");
-    }
-
     if (activeView === "character") {
+      renderAttributeMissionPanel();
       window.requestAnimationFrame(drawRadarChart);
     }
+  }
+
+  function getProfileClassSummary() {
+    const unlocked = Object.keys(ATTRIBUTES)
+      .map((key) => ({ key, level: state.attributes[key]?.level || 1 }))
+      .filter((item) => item.level >= 10)
+      .sort((a, b) => b.level - a.level);
+    if (!unlocked.length) return "Novato";
+    return ATTRIBUTES[unlocked[0].key].className;
   }
 
   function renderCharacterAttributeCard(attributeKey) {
     const definition = ATTRIBUTES[attributeKey];
     const attribute = state.attributes[attributeKey];
-    const classInfo = getClassInfo(attributeKey);
     const requiredXp = calculateRequiredXP(attribute.level);
-    const progress = attribute.level >= MAX_LEVEL
-      ? 100
-      : (attribute.xp / requiredXp) * 100;
-    const affinity = Math.min(100, attribute.milestones.length * 20);
+    const progress = attribute.level >= MAX_LEVEL ? 100 : (attribute.xp / requiredXp) * 100;
     const xpText = attribute.level >= MAX_LEVEL
       ? "Nível máximo"
-      : `${formatNumber(attribute.xp)} de ${formatNumber(requiredXp)} XP`;
+      : `${formatNumber(attribute.xp)} / ${formatNumber(requiredXp)} XP`;
 
     return `
-      <article class="character-attribute-card" style="--attribute-color: ${definition.cssColor};">
-        <div class="mentor-badge" title="Mentor: ${escapeHtml(definition.mentor)}" aria-hidden="true">${definition.icon}</div>
-        <div class="character-attribute-main">
-          <div class="character-attribute-head">
-            <div>
-              <h3>${definition.name}</h3>
-              <p>${escapeHtml(definition.description)}</p>
-            </div>
-            <span class="character-attribute-level">Nv. ${attribute.level}</span>
-          </div>
-          <div class="attribute-progress-row">
-            <div class="progress-track" role="progressbar" aria-label="XP de ${definition.name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress)}">
-              <span style="width: ${clamp(progress, 0, 100)}%;"></span>
-            </div>
-            <small>${xpText}</small>
-          </div>
-          <div class="mentor-line">
-            <span>Mentor: <strong>${escapeHtml(definition.mentor)}</strong> • ${escapeHtml(definition.mentorRole)}</span>
-            <span>Afinidade <strong>${affinity}%</strong></span>
-          </div>
-          <div class="mentor-line">
-            <span>Classe: <strong>${escapeHtml(classInfo.shortLabel)}</strong></span>
-            <span>${escapeHtml(classInfo.bonusDescription)}</span>
-          </div>
-          <div class="milestone-track" aria-label="Marcos de ${definition.name}">
-            ${MILESTONE_LEVELS.map(
-              (level) =>
-                `<span class="milestone-node ${level <= attribute.level ? "is-unlocked" : ""}" title="Nível ${level}">${level}</span>`
-            ).join("")}
-          </div>
-        </div>
-      </article>
+      <button class="profile-attribute-button" type="button" data-open-attribute="${attributeKey}" style="--attribute-color:${definition.chartColor}">
+        <span class="profile-attribute-copy">
+          <strong>${escapeHtml(definition.name)}</strong>
+          <small>Nível ${attribute.level}</small>
+          <span class="profile-attribute-progress" role="progressbar" aria-label="XP de ${escapeHtml(definition.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress)}"><i style="width:${clamp(progress, 0, 100)}%"></i></span>
+          <em>${xpText}</em>
+        </span>
+        <span class="profile-attribute-chevron" aria-hidden="true">›</span>
+      </button>
     `;
+  }
+
+  function openAttributeMissions(attributeKey) {
+    if (!ATTRIBUTES[attributeKey]) return;
+    activeProfileAttribute = attributeKey;
+    const main = document.getElementById("profileMainPanel");
+    const panel = document.getElementById("attributeMissionsPanel");
+    if (main) main.hidden = true;
+    if (panel) panel.hidden = false;
+    renderAttributeMissionPanel();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function closeAttributeMissions() {
+    const main = document.getElementById("profileMainPanel");
+    const panel = document.getElementById("attributeMissionsPanel");
+    if (panel) panel.hidden = true;
+    if (main) main.hidden = false;
+    window.requestAnimationFrame(drawRadarChart);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cycleProfileAttribute(direction) {
+    const keys = PROFILE_ATTRIBUTE_ORDER;
+    const current = Math.max(0, keys.indexOf(activeProfileAttribute));
+    activeProfileAttribute = keys[(current + direction + keys.length) % keys.length];
+    renderAttributeMissionPanel();
+  }
+
+  function missionBelongsToAttribute(mission, attributeKey) {
+    if (mission?.reward?.attribute === attributeKey) return true;
+    const metric = mission?.metric || {};
+    const activityIds = [];
+    if (metric.activityId) activityIds.push(metric.activityId);
+    if (Array.isArray(metric.activityIds)) activityIds.push(...metric.activityIds);
+    if (activityIds.some((id) => ACTIVITIES[id]?.attribute === attributeKey)) return true;
+    if (attributeKey === "determination" && ["activeDays", "anyActivityCount", "categoryCount"].includes(metric.type)) return true;
+    return false;
+  }
+
+  function renderAttributeMissionPanel() {
+    const panel = document.getElementById("attributeMissionsPanel");
+    if (!panel || panel.hidden) return;
+    const key = activeProfileAttribute;
+    const definition = ATTRIBUTES[key];
+    const attribute = state.attributes[key];
+    if (!definition || !attribute) return;
+
+    const info = getClassInfo(key);
+    const requiredXp = calculateRequiredXP(attribute.level);
+    const progress = attribute.level >= MAX_LEVEL ? 100 : (attribute.xp / requiredXp) * 100;
+    setText("attributeMissionTitle", definition.name);
+    setText("attributeClassMark", definition.name.slice(0, 1));
+    setText("attributeClassName", definition.className);
+    setText("attributeClassStage", attribute.level >= 10 ? info.stageLabel : "Desbloqueia no nível 10");
+    setText("attributeMissionLevel", `Nível ${attribute.level}`);
+    setText("attributeMissionXp", attribute.level >= MAX_LEVEL ? "Nível máximo" : `${formatNumber(attribute.xp)} / ${formatNumber(requiredXp)} XP`);
+    const xpBar = document.getElementById("attributeMissionXpBar");
+    if (xpBar) xpBar.style.width = `${clamp(progress, 0, 100)}%`;
+
+    const missions = [...state.missions.daily, ...state.missions.weekly].filter((mission) => missionBelongsToAttribute(mission, key));
+    setText("attributeMissionCount", `${missions.length} ${missions.length === 1 ? "missão" : "missões"}`);
+    const list = document.getElementById("attributeMissionList");
+    if (list) {
+      list.innerHTML = missions.length
+        ? missions.map((mission) => missionCardMarkup(mission, false)).join("")
+        : `<div class="attribute-mission-empty"><strong>Nenhuma missão ativa</strong><span>Novas missões deste atributo aparecerão aqui.</span></div>`;
+    }
   }
 
   function renderClassCollectionItem(attributeKey) {
@@ -1807,13 +1837,14 @@
 
   function drawRadarChart() {
     const canvas = document.getElementById("radarChart");
-    if (!canvas || activeView !== "character") return;
+    if (!canvas || activeView !== "character" || document.getElementById("profileMainPanel")?.hidden) return;
 
     const rect = canvas.getBoundingClientRect();
-    const cssSize = Math.max(180, Math.min(240, Math.floor(Math.min(rect.width || 340, rect.height || rect.width || 340))));
+    const cssSize = Math.max(210, Math.min(260, Math.floor(rect.width || 250)));
     const ratio = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     canvas.width = Math.round(cssSize * ratio);
     canvas.height = Math.round(cssSize * ratio);
+    canvas.style.width = `${cssSize}px`;
     canvas.style.height = `${cssSize}px`;
 
     const context = canvas.getContext("2d");
@@ -1821,8 +1852,8 @@
     context.clearRect(0, 0, cssSize, cssSize);
 
     const center = cssSize / 2;
-    const radius = cssSize * 0.41;
-    // Ordem horária igual ao layout de referência: topo, direita, base e esquerda.
+    const radius = cssSize * 0.31;
+    const labelRadius = cssSize * 0.43;
     const keys = ["agility", "constitution", "intelligence", "charisma", "determination", "force"];
     const angleStep = (Math.PI * 2) / keys.length;
     const startAngle = -Math.PI / 2;
@@ -1830,8 +1861,8 @@
     context.lineJoin = "round";
     context.lineCap = "round";
 
-    for (let ring = 1; ring <= 6; ring += 1) {
-      const ringRadius = radius * (ring / 6);
+    for (let ring = 1; ring <= 5; ring += 1) {
+      const ringRadius = radius * (ring / 5);
       context.beginPath();
       keys.forEach((_, index) => {
         const angle = startAngle + angleStep * index;
@@ -1840,8 +1871,8 @@
         index === 0 ? context.moveTo(x, y) : context.lineTo(x, y);
       });
       context.closePath();
-      context.strokeStyle = ring === 6 ? "rgba(171,149,255,.55)" : "rgba(171,149,255,.22)";
-      context.lineWidth = ring === 6 ? 1.4 : 1;
+      context.strokeStyle = ring === 5 ? "rgba(159,132,255,.5)" : "rgba(159,132,255,.18)";
+      context.lineWidth = 1;
       context.stroke();
     }
 
@@ -1850,41 +1881,36 @@
       context.beginPath();
       context.moveTo(center, center);
       context.lineTo(center + Math.cos(angle) * radius, center + Math.sin(angle) * radius);
-      context.strokeStyle = "rgba(171,149,255,.2)";
-      context.lineWidth = 1;
+      context.strokeStyle = "rgba(159,132,255,.17)";
       context.stroke();
     });
 
     context.beginPath();
     keys.forEach((attributeKey, index) => {
       const level = clamp(state.attributes[attributeKey]?.level || 1, 1, MAX_LEVEL);
-      // 10% de base mantém nível 1 visível sem distorcer a progressão.
-      const normalized = 0.10 + 0.90 * ((level - 1) / (MAX_LEVEL - 1));
+      const normalized = 0.12 + 0.88 * ((level - 1) / (MAX_LEVEL - 1));
       const angle = startAngle + angleStep * index;
       const x = center + Math.cos(angle) * radius * normalized;
       const y = center + Math.sin(angle) * radius * normalized;
       index === 0 ? context.moveTo(x, y) : context.lineTo(x, y);
     });
     context.closePath();
-    context.fillStyle = "rgba(128,88,255,.34)";
+    context.fillStyle = "rgba(128,88,255,.32)";
     context.fill();
     context.strokeStyle = "#9f83ff";
-    context.lineWidth = 2.5;
+    context.lineWidth = 2;
     context.stroke();
 
+    context.fillStyle = "#c8ccd5";
+    context.font = `600 ${Math.max(8, Math.round(cssSize * 0.035))}px system-ui, sans-serif`;
+    context.textBaseline = "middle";
     keys.forEach((attributeKey, index) => {
-      const level = clamp(state.attributes[attributeKey]?.level || 1, 1, MAX_LEVEL);
-      const normalized = 0.10 + 0.90 * ((level - 1) / (MAX_LEVEL - 1));
       const angle = startAngle + angleStep * index;
-      const x = center + Math.cos(angle) * radius * normalized;
-      const y = center + Math.sin(angle) * radius * normalized;
-      context.beginPath();
-      context.arc(x, y, 4.5, 0, Math.PI * 2);
-      context.fillStyle = "#d8ff62";
-      context.fill();
-      context.strokeStyle = "#11131a";
-      context.lineWidth = 2;
-      context.stroke();
+      const x = center + Math.cos(angle) * labelRadius;
+      const y = center + Math.sin(angle) * labelRadius;
+      const cos = Math.cos(angle);
+      context.textAlign = Math.abs(cos) < 0.25 ? "center" : cos > 0 ? "left" : "right";
+      context.fillText(ATTRIBUTES[attributeKey].name, x, y);
     });
   }
 
@@ -3164,23 +3190,27 @@
   }
 
   const FOOD_SEARCH_ALIASES = {
-    "arroz branco": "arroz tipo 1 cozido", "peito de frango": "frango peito", "frango grelhado": "frango grelhado",
-    "pao frances": "pao frances", "ovo": "ovo galinha", "banana": "banana", "batata doce": "batata doce",
-    "carne moida": "carne bovina moida", "feijao": "feijao", "leite": "leite", "aveia": "aveia"
+    "arroz branco": "arroz branco", "peito de frango": "peito frango", "frango grelhado": "frango grelhado",
+    "pao frances": "pao frances", "ovo": "ovo", "banana": "banana", "batata doce": "batata doce",
+    "carne moida": "carne moida", "feijao": "feijao", "leite": "leite", "aveia": "aveia",
+    "mussarela": "mucarela", "macarrao": "macarrao", "miojo": "miojo", "aipim": "mandioca", "macaxeira": "mandioca"
   };
 
   function foodSearchScore(food, rawQuery) {
-    if (!rawQuery) return 1;
+    if (!rawQuery) return food.common === false ? 0 : 1;
     const normalized = normalizeSearchText(rawQuery).trim();
     const alias = FOOD_SEARCH_ALIASES[normalized] || normalized;
     const tokens = alias.split(/\s+/).filter(Boolean);
-    const haystack = normalizeSearchText(`${food.name} ${food.group}`);
+    const foodAliases = Array.isArray(food.aliases) ? food.aliases.join(" ") : "";
+    const haystack = normalizeSearchText(`${food.name} ${food.group} ${foodAliases}`);
     if (!tokens.every(token => haystack.includes(token))) return 0;
-    let score = 10;
+    let score = food.common === false ? 4 : 14;
     const name = normalizeSearchText(food.name);
-    if (name.startsWith(alias)) score += 15;
-    if (name.includes(alias)) score += 8;
-    score += tokens.filter(token => name.includes(token)).length * 2;
+    const aliases = normalizeSearchText(foodAliases);
+    if (name.startsWith(alias)) score += 18;
+    if (name.includes(alias)) score += 10;
+    if (aliases.includes(alias)) score += 12;
+    score += tokens.filter(token => name.includes(token)).length * 3;
     return score;
   }
 
@@ -3196,7 +3226,10 @@
   }
 
   function foodResultMarkup(food, isFavorite=false) {
-    return `<article class="food-result-card"><button class="food-favorite-button ${isFavorite?"is-favorite":""}" type="button" data-favorite-food="${food.id}" aria-label="${isFavorite?"Remover dos favoritos":"Favoritar alimento"}">${isFavorite?"★":"☆"}</button><div class="food-result-main"><strong>${escapeHtml(food.name)}</strong><small>${escapeHtml(food.group)} · por 100 g</small><div class="food-macros"><span><b>${Math.round(foodValue(food.kcal))}</b> kcal</span><span>C <b>${foodValue(food.carbs).toFixed(1)}</b> g</span><span>P <b>${foodValue(food.protein).toFixed(1)}</b> g</span><span>G <b>${foodValue(food.fat).toFixed(1)}</b> g</span></div></div><label><span>Quantidade</span><input type="number" min="1" max="2000" step="1" value="100" data-food-grams="${food.id}"><small>g</small></label><button class="food-add-button" type="button" data-add-food="${food.id}" aria-label="Adicionar">＋</button></article>`;
+    const portions = Array.isArray(food.portions) && food.portions.length
+      ? `<div class="food-portion-presets">${food.portions.slice(0,2).map((portion)=>`<button type="button" data-food-portion="${food.id}" data-portion-grams="${portion.grams}">${escapeHtml(portion.label)}</button>`).join("")}</div>`
+      : "";
+    return `<article class="food-result-card"><button class="food-favorite-button ${isFavorite?"is-favorite":""}" type="button" data-favorite-food="${food.id}" aria-label="${isFavorite?"Remover dos favoritos":"Favoritar alimento"}">${isFavorite?"★":"☆"}</button><div class="food-result-main"><strong>${escapeHtml(food.name)}</strong><small>${escapeHtml(FOOD_GROUP_LABELS[food.group] || food.group)} · valores por 100 g</small><div class="food-macros"><span><b>${Math.round(foodValue(food.kcal))}</b> kcal</span><span>C <b>${foodValue(food.carbs).toFixed(1)}</b> g</span><span>P <b>${foodValue(food.protein).toFixed(1)}</b> g</span><span>G <b>${foodValue(food.fat).toFixed(1)}</b> g</span></div>${portions}</div><label><span>Quantidade</span><input type="number" min="1" max="2000" step="1" value="${food.portions?.[0]?.grams || 100}" data-food-grams="${food.id}"><small>g</small></label><button class="food-add-button" type="button" data-add-food="${food.id}" aria-label="Adicionar">＋</button></article>`;
   }
 
   const FOOD_GROUP_LABELS = {
@@ -3247,7 +3280,7 @@
     const favorites=new Set((data.favoriteFoodIds || []).map(Number));
 
     if (!query) {
-      setText("foodSearchCount", `${FOOD_DATABASE.length} alimentos`);
+      setText("foodSearchCount", `${FOOD_COMMON_DATABASE.length} alimentos principais`);
       const favoriteFoods=(data.favoriteFoodIds||[])
         .map(id=>FOOD_DATABASE.find(food=>food.id===Number(id)))
         .filter(Boolean);
@@ -3261,7 +3294,7 @@
 
       html += `<div class="food-browser-heading food-types-heading"><div><strong>Alimentos por tipo</strong></div><small>${FOOD_GROUP_ORDER.length} categorias</small></div>`;
       for (const groupName of FOOD_GROUP_ORDER) {
-        const foods=FOOD_DATABASE.filter(food=>food.group===groupName).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
+        const foods=FOOD_COMMON_DATABASE.filter(food=>food.group===groupName).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
         html += renderFoodGroup(groupName, foods, favorites);
       }
       container.innerHTML=html;
@@ -3275,7 +3308,7 @@
       .slice(0,80)
       .map(entry=>entry.food);
 
-    setText("foodSearchCount", `${results.length}${FOOD_DATABASE.length>results.length?"+":""} resultados`);
+    setText("foodSearchCount", `${results.length}${FOOD_DATABASE.length>results.length?"+":""} resultados · busca completa`);
     container.innerHTML=results.length
       ? `<div class="food-search-results">${results.map(food=>foodResultMarkup(food,favorites.has(food.id))).join("")}</div>`
       : `<div class="exercise-picker-empty">Nenhum alimento encontrado.</div>`;
@@ -3403,6 +3436,21 @@
         return;
       }
 
+      const attributeOpenButton = event.target.closest("[data-open-attribute]");
+      if (attributeOpenButton) { openAttributeMissions(attributeOpenButton.dataset.openAttribute); return; }
+
+      const attributeBackButton = event.target.closest("[data-attribute-back]");
+      if (attributeBackButton) { closeAttributeMissions(); return; }
+
+      const attributePrevButton = event.target.closest("[data-attribute-prev]");
+      if (attributePrevButton) { cycleProfileAttribute(-1); return; }
+
+      const attributeNextButton = event.target.closest("[data-attribute-next]");
+      if (attributeNextButton) { cycleProfileAttribute(1); return; }
+
+      const profileSettingsInline = event.target.closest("[data-open-profile-settings]");
+      if (profileSettingsInline) { openProfileSettings(); return; }
+
       const socialBackButton = event.target.closest("[data-social-back]");
       if (socialBackButton) { showSocialPanel("socialHomePanel"); return; }
 
@@ -3459,6 +3507,13 @@
 
       const favoriteFoodButton = event.target.closest("[data-favorite-food]");
       if (favoriteFoodButton) { toggleFavoriteFood(favoriteFoodButton.dataset.favoriteFood); return; }
+
+      const portionButton = event.target.closest("[data-food-portion]");
+      if (portionButton) {
+        const input=document.querySelector(`[data-food-grams="${portionButton.dataset.foodPortion}"]`);
+        if (input) { input.value=portionButton.dataset.portionGrams || 100; input.dispatchEvent(new Event("input", {bubbles:true})); }
+        return;
+      }
 
       const addFoodButton = event.target.closest("[data-add-food]");
       if (addFoodButton) { addFoodToMeal(addFoodButton.dataset.addFood); return; }
@@ -3668,6 +3723,12 @@
     }
 
     if (viewName === "character") {
+      const main = document.getElementById("profileMainPanel");
+      const attributePanel = document.getElementById("attributeMissionsPanel");
+      if (main && attributePanel) {
+        attributePanel.hidden = true;
+        main.hidden = false;
+      }
       window.setTimeout(drawRadarChart, 80);
     } else if (viewName === "diet") {
       renderDiet();

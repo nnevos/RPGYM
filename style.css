@@ -4822,3 +4822,214 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .food-favorites-section .food-result-card:last-child {
   border-bottom: 0;
 }
+
+/* Dieta: base otimizada + porcoes usuais */
+.food-portion-presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.food-portion-presets button{border:1px solid rgba(216,255,66,.28);background:#24262d;color:#eef1f6;border-radius:999px;padding:5px 8px;font-size:.58rem;font-weight:700;line-height:1;cursor:pointer}
+.food-portion-presets button:hover,.food-portion-presets button:focus-visible{border-color:#d8ff42;color:#d8ff42;outline:none}
+.food-result-main>small{color:#cfd3dc}
+.food-result-card{align-items:start}
+.food-result-card>label{align-self:center}
+.food-add-button{align-self:center}
+@media (max-width:640px){
+  .food-portion-presets{gap:5px}
+  .food-portion-presets button{padding:5px 7px;font-size:.54rem}
+}
+
+/* =========================================================
+   Perfil — hierarquia inspirada na referência, sem copiar UI
+   ========================================================= */
+#view-character{padding-bottom:24px}
+.profile-reference-page,
+.attribute-missions-page{
+  width:min(100%,560px);
+  margin:0 auto;
+  background:#17191f;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:22px;
+  overflow:hidden;
+}
+.profile-reference-page[hidden],.attribute-missions-page[hidden]{display:none!important}
+.profile-reference-header{
+  min-height:58px;
+  display:grid;
+  grid-template-columns:42px 1fr 42px;
+  align-items:center;
+  padding:8px 12px;
+  background:#a58dff;
+  color:#17151e;
+}
+.profile-reference-header::before{content:""}
+.profile-reference-header h2{
+  margin:0;
+  text-align:center;
+  font-size:.92rem;
+  font-weight:900;
+  color:#191620!important;
+}
+.profile-icon-button{
+  width:36px;height:36px;padding:0;
+  display:grid;place-items:center;
+  justify-self:end;
+  border:0;border-radius:50%;
+  background:rgba(27,23,38,.16);
+  color:#17151e!important;
+  font-size:1rem;font-weight:900;
+  box-shadow:none;
+}
+.profile-icon-button:hover{background:rgba(27,23,38,.24)}
+.profile-identity-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:16px 16px 0;
+  background:#a58dff;
+  color:#17151e;
+  text-align:center;
+}
+.profile-avatar-large{
+  width:72px;height:72px;
+  display:grid;place-items:center;
+  border-radius:50%;
+  background:linear-gradient(145deg,#31284d,#4b3b79);
+  border:2px solid rgba(216,255,98,.75);
+  color:#fff;
+  font-weight:950;
+  font-size:1.05rem;
+  box-shadow:0 8px 22px rgba(23,18,38,.18);
+}
+.profile-player-name{margin-top:8px;font-size:1rem;color:#17151e}
+.profile-player-title{margin-top:2px;font-size:.68rem;font-weight:700;color:#443a59}
+.profile-facts{
+  width:calc(100% + 32px);
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  background:#805cff;
+  color:#fff;
+}
+.profile-facts span{
+  min-width:0;
+  padding:9px 8px 10px;
+  display:flex;flex-direction:column;gap:2px;
+  align-items:center;
+  border-right:1px solid rgba(255,255,255,.16);
+}
+.profile-facts span:last-child{border-right:0}
+.profile-facts strong{font-size:.76rem;color:#fff}
+.profile-facts small{font-size:.53rem;color:#e5ddff;text-transform:uppercase;letter-spacing:.05em}
+.profile-radar-section{
+  min-height:278px;
+  display:grid;
+  place-items:center;
+  padding:8px 8px 2px;
+  background:#17191f;
+}
+.profile-radar-section canvas{
+  display:block;
+  width:min(260px,82vw)!important;
+  max-width:260px!important;
+  height:auto!important;
+  max-height:none!important;
+}
+.profile-attributes-section{padding:8px 14px 18px;background:#17191f}
+.profile-section-title-row{
+  display:flex;align-items:end;justify-content:space-between;gap:12px;
+  margin:0 0 10px;
+}
+.profile-section-title-row h3{margin:0;color:#a58dff!important;font-size:.88rem;font-weight:900}
+.profile-section-title-row small{color:#8e95a3;font-size:.62rem}
+.profile-attribute-buttons{display:grid;gap:7px}
+.profile-attribute-button{
+  width:100%;min-height:68px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 24px;
+  align-items:center;gap:8px;
+  padding:10px 11px 10px 13px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  background:#f3f1f7;
+  color:#17191f!important;
+  text-align:left;
+  box-shadow:none;
+}
+.profile-attribute-button:hover{background:#fff;border-color:rgba(159,132,255,.48)}
+.profile-attribute-copy{min-width:0;display:grid;grid-template-columns:1fr auto;gap:1px 10px;align-items:center}
+.profile-attribute-copy strong{font-size:.76rem;color:#191a20!important}
+.profile-attribute-copy small{font-size:.6rem;font-weight:800;color:#626676;justify-self:end}
+.profile-attribute-progress{
+  grid-column:1/-1;
+  height:5px;
+  margin-top:4px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#c9cbd2;
+}
+.profile-attribute-progress i{display:block;height:100%;border-radius:inherit;background:#7957ff}
+.profile-attribute-copy em{grid-column:1/-1;margin-top:2px;font-style:normal;font-size:.55rem;color:#6f7480}
+.profile-attribute-chevron{font-size:1.35rem;font-weight:400;color:#7b5cff}
+
+/* Tela de missões do atributo */
+.attribute-missions-page{min-height:620px;background:#1b1d23}
+.attribute-missions-topbar{
+  min-height:52px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;
+  background:#a58dff;
+}
+.attribute-back-button{
+  border:0;background:transparent!important;color:#4d34a6!important;
+  padding:7px 4px;font-size:.72rem;font-weight:900;box-shadow:none
+}
+.attribute-switcher{
+  height:46px;
+  display:grid;grid-template-columns:44px 1fr 44px;align-items:center;
+  background:#805cff;color:#fff;
+}
+.attribute-switcher strong{text-align:center;font-size:.82rem}
+.attribute-switcher button{height:100%;border:0;border-radius:0;background:transparent!important;color:#d8ff62!important;font-size:1.25rem;box-shadow:none}
+.attribute-mission-hero{
+  min-height:190px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:18px;
+  background:#a58dff;
+  color:#17151e;
+}
+.attribute-class-mark{
+  width:72px;height:72px;display:grid;place-items:center;
+  border-radius:18px;
+  background:#201b2c;
+  color:#d8ff62;
+  border:1px solid rgba(216,255,98,.45);
+  font-size:1.55rem;font-weight:950;
+}
+.attribute-mission-hero>strong{margin-top:9px;font-size:.95rem;color:#17151e}
+.attribute-mission-hero>span{margin-top:2px;font-size:.62rem;font-weight:700;color:#4d425d}
+.attribute-mission-progress-line{width:min(280px,100%);display:flex;justify-content:space-between;margin-top:13px;font-size:.6rem;font-weight:800}
+.attribute-mission-xpbar{width:min(280px,100%);height:6px;margin-top:5px;background:rgba(25,21,32,.2)}
+.attribute-mission-xpbar span{background:#7250ff!important}
+.attribute-mission-list-section{padding:14px}
+.attribute-mission-list{display:grid;gap:8px}
+.attribute-mission-list .mission-card{
+  padding:11px!important;
+  border-radius:12px!important;
+  background:#f5f3f8!important;
+  color:#17191f!important;
+  border:0!important;
+}
+.attribute-mission-list .mission-head h3{color:#17191f!important;font-size:.72rem!important}
+.attribute-mission-list .mission-head p{color:#6b6e78!important;font-size:.58rem!important}
+.attribute-mission-list .mission-reward{color:#5c3ad8!important;background:#e7e0ff!important}
+.attribute-mission-list .mission-progress strong,
+.attribute-mission-list .mission-status{color:#555b68!important}
+.attribute-mission-list .claim-button{min-height:30px;padding:5px 10px;border-radius:9px;background:#7655f7!important;color:#fff!important}
+.attribute-mission-empty{display:flex;flex-direction:column;gap:4px;padding:18px;border:1px dashed rgba(255,255,255,.12);border-radius:12px;text-align:center;color:#afb4bf}
+.attribute-mission-empty strong{color:#fff}
+
+@media(max-width:720px){
+  #view-character{padding:0 0 10px!important}
+  .profile-reference-page,.attribute-missions-page{width:100%;border-radius:0;border-left:0;border-right:0}
+  .profile-radar-section{min-height:250px}
+  .profile-radar-section canvas{width:min(240px,78vw)!important;max-width:240px!important}
+  .profile-attributes-section{padding-inline:12px}
+}

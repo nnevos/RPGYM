@@ -359,84 +359,65 @@
 <button class="diet-finish-button" id="finishDietDay" type="button">Finalizar Dia</button>
 </div>
 </section><section aria-labelledby="characterHeading" class="view" data-view-panel="character" hidden="" id="view-character">
-<div class="character-hero panel">
-<div class="character-avatar-wrap compact-avatar-wrap">
-<div class="character-avatar compact-avatar" id="characterAvatar">JG</div>
-<span class="character-level-badge">Nv. <strong id="characterLevelBadge">1</strong></span>
-</div>
-<div class="character-identity">
-<p class="eyebrow">Perfil do jogador</p>
-<h2 id="characterHeading">Jogador</h2>
-<div class="profile-action-row"><button aria-controls="profileSettingsOverlay" aria-haspopup="dialog" class="profile-settings-button" id="profileSettingsButton" type="button">Configurações</button><button class="help-button" data-help="profile" aria-label="Entender o perfil e os atributos" type="button">?</button></div>
-<p class="character-title" id="characterTitle">Novato</p>
-<div class="character-meta">
-<span><strong id="characterTotalXp">0</strong> XP total</span>
-<span><strong id="characterMilestoneCount">0</strong> marcos</span>
-<span><strong id="characterClassCount">0</strong> classes</span>
-</div>
-</div>
-<div class="character-radar-wrap reference-radar-map">
-<div class="map-attribute map-agility" data-map-attribute="agility"><strong>Agilidade</strong><small id="map-agility">Nv. 1</small></div>
-<div class="map-attribute map-force" data-map-attribute="force"><strong>Força</strong><small id="map-force">Nv. 1</small></div>
-<div class="map-attribute map-constitution" data-map-attribute="constitution"><strong>Constituição</strong><small id="map-constitution">Nv. 1</small></div>
-<div class="map-attribute map-intelligence" data-map-attribute="intelligence"><strong>Inteligência</strong><small id="map-intelligence">Nv. 1</small></div>
-<div class="map-attribute map-determination" data-map-attribute="determination"><strong>Determinação</strong><small id="map-determination">Nv. 1</small></div>
-<div class="map-attribute map-charisma" data-map-attribute="charisma"><strong>Carisma</strong><small id="map-charisma">Nv. 1</small></div>
-<canvas aria-label="Gráfico dos níveis dos seis atributos" height="360" id="radarChart" width="360"></canvas>
-</div>
-</div>
-<div class="character-grid">
-<section aria-labelledby="characterAttributesTitle" class="panel panel-span-two">
-<div class="section-heading">
-<div>
-<p class="eyebrow">Progressão individual</p>
-<h2 id="characterAttributesTitle">Atributos e mentores</h2>
-</div>
-</div>
-<div class="character-attribute-list" id="characterAttributeList"></div>
+  <div class="profile-reference-page" id="profileMainPanel">
+    <header class="profile-reference-header">
+      <h2 id="characterHeading">Meu Perfil</h2>
+      <button aria-controls="profileSettingsOverlay" aria-haspopup="dialog" class="profile-icon-button" id="profileSettingsButton" type="button" aria-label="Configurações do perfil">⚙</button>
+    </header>
+
+    <section class="profile-identity-card" aria-label="Identidade do jogador">
+      <div class="profile-avatar-large" id="characterAvatar">JG</div>
+      <strong class="profile-player-name" id="profilePlayerName">Jogador</strong>
+      <span class="profile-player-title" id="characterTitle">Novato</span>
+      <div class="profile-facts" aria-label="Dados do perfil">
+        <span><strong id="profileWeightSummary">—</strong><small>Peso</small></span>
+        <span><strong id="profileClassSummary">Novato</strong><small>Classe</small></span>
+        <span><strong id="profileHeightSummary">—</strong><small>Altura</small></span>
+      </div>
+    </section>
+
+    <section class="profile-radar-section" aria-label="Visão geral dos atributos">
+      <canvas aria-label="Gráfico dos níveis dos seis atributos" height="260" id="radarChart" width="260"></canvas>
+    </section>
+
+    <section class="profile-attributes-section" aria-labelledby="characterAttributesTitle">
+      <div class="profile-section-title-row">
+        <h3 id="characterAttributesTitle">Atributos</h3>
+        <small>Toque para ver missões</small>
+      </div>
+      <div class="profile-attribute-buttons" id="characterAttributeList"></div>
+    </section>
+  </div>
+
+  <section class="attribute-missions-page" id="attributeMissionsPanel" hidden aria-labelledby="attributeMissionTitle">
+    <header class="attribute-missions-topbar">
+      <button class="attribute-back-button" data-attribute-back type="button">‹ Voltar</button>
+      <button class="profile-icon-button" aria-controls="profileSettingsOverlay" aria-haspopup="dialog" data-open-profile-settings type="button" aria-label="Configurações do perfil">⚙</button>
+    </header>
+    <div class="attribute-switcher">
+      <button type="button" data-attribute-prev aria-label="Atributo anterior">‹</button>
+      <strong id="attributeMissionTitle">Força</strong>
+      <button type="button" data-attribute-next aria-label="Próximo atributo">›</button>
+    </div>
+    <section class="attribute-mission-hero">
+      <div class="attribute-class-mark" id="attributeClassMark">F</div>
+      <strong id="attributeClassName">Berserker</strong>
+      <span id="attributeClassStage">Classe bloqueada</span>
+      <div class="attribute-mission-progress-line">
+        <span id="attributeMissionLevel">Nível 1</span>
+        <span id="attributeMissionXp">0 / 100 XP</span>
+      </div>
+      <div class="progress-track attribute-mission-xpbar"><span id="attributeMissionXpBar" style="width:0%"></span></div>
+    </section>
+    <section class="attribute-mission-list-section">
+      <div class="profile-section-title-row">
+        <h3>Missões do atributo</h3>
+        <small id="attributeMissionCount">0 missões</small>
+      </div>
+      <div class="attribute-mission-list" id="attributeMissionList"></div>
+    </section>
+  </section>
 </section>
-<section aria-labelledby="classCollectionTitle" class="panel">
-<div class="section-heading compact-heading">
-<div>
-<p class="eyebrow">Coleção</p>
-<h2 id="classCollectionTitle">Classes</h2>
-</div>
-</div>
-<div class="class-collection" id="characterClassCollection"></div>
-</section>
-<section aria-labelledby="titlesCollectionTitle" class="panel panel-span-three">
-<div class="section-heading">
-<div>
-<p class="eyebrow">Conquistas permanentes</p>
-<h2 id="titlesCollectionTitle">Títulos desbloqueados</h2>
-</div>
-</div>
-<div class="title-chip-list" id="titleChipList"></div>
-</section>
-<section aria-labelledby="historyTitle" class="panel panel-span-three history-panel" id="profileHistoryPanel">
-<div class="section-heading history-heading">
-<div>
-<p class="eyebrow">Registro da jornada</p>
-<h2 id="historyTitle">Histórico de atividades</h2>
-</div>
-<label class="filter-label">
-<span class="sr-only">Filtrar por atributo</span>
-<select id="historyFilter">
-<option value="all">Todos os atributos</option>
-<option value="force">Força</option>
-<option value="agility">Agilidade</option>
-<option value="constitution">Constituição</option>
-<option value="intelligence">Inteligência</option>
-<option value="determination">Determinação</option>
-<option value="charisma">Carisma</option>
-</select>
-</label>
-</div>
-<div class="history-list history-list-full" id="fullHistoryList"></div>
-</section>
-</div>
-</section>
-</main>
 <nav aria-label="Navegação principal mobile" class="mobile-nav"><button class="mobile-nav-item is-active" data-view="social" type="button"><span aria-hidden="true">◎</span><small>Social</small></button><button class="mobile-nav-item" data-view="training" type="button"><span aria-hidden="true">⚔</span><small>Treino</small></button><button class="mobile-nav-item" data-view="cardio" type="button"><span aria-hidden="true">◉</span><small>Cardio</small></button><button class="mobile-nav-item" data-view="diet" type="button"><span aria-hidden="true">◔</span><small>Dieta</small></button><button class="mobile-nav-item" data-view="character" type="button"><span aria-hidden="true">◈</span><small>Perfil</small></button></nav>
 </div>
 <div class="help-overlay" hidden id="helpOverlay">
