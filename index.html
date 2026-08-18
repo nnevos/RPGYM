@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<meta content="#0b0d13" name="theme-color"/>
+<meta content="RPG GYM: transforme treinos e hábitos saudáveis em uma jornada de evolução." name="description"/>
+<title>RPG GYM</title>
+<link href="style.css" rel="stylesheet"/>
+<script defer="" src="exercises.js"></script><script defer="" src="foods.js"></script><script defer="" src="script.js"></script>
+</head>
+<body>
+<noscript>
+<div class="noscript-message">O RPG GYM precisa de JavaScript ativado para funcionar.</div>
+</noscript>
+<div aria-hidden="true" class="ambient ambient-one"></div>
+<div aria-hidden="true" class="ambient ambient-two"></div>
+<div aria-hidden="true" class="ambient-grid"></div>
+<div class="app-shell">
+<aside aria-label="Navegação principal" class="sidebar">
+<button aria-label="Ir para o início" class="brand" data-view-target="social" type="button">
+<span aria-hidden="true" class="brand-mark">D20</span>
+<span>
+<strong>RPG GYM</strong>
+<small>Treine. Evolua.</small>
+</span>
+</button>
+<nav aria-label="Seções do aplicativo" class="desktop-nav"><button class="nav-item is-active" data-view="social" type="button"><span aria-hidden="true">◎</span><span>Social</span></button><button class="nav-item" data-view="training" type="button"><span aria-hidden="true">⚔</span><span>Treino</span></button><button class="nav-item" data-view="cardio" type="button"><span aria-hidden="true">◉</span><span>Cardio</span></button><button class="nav-item" data-view="diet" type="button"><span aria-hidden="true">◔</span><span>Dieta</span></button><button class="nav-item" data-view="character" type="button"><span aria-hidden="true">◈</span><span>Perfil</span></button></nav>
+<div class="sidebar-status">
+<span aria-hidden="true" class="status-dot"></span>
+<div>
+<strong>Progresso local</strong>
+<small>Salvo automaticamente</small>
+</div>
+</div>
+</aside>
+<main class="main-content">
+
+<section aria-labelledby="dashboardHeading" class="view" data-view-panel="dashboard" hidden="" id="view-dashboard">
+<h2 class="sr-only" id="dashboardHeading">Início</h2>
+<div class="hero-card">
+<div class="hero-copy">
+<p class="hero-kicker">Jornada ativa</p>
+<h2>Olá, <span id="dashboardPlayerName">Jogador</span>.</h2>
+<p id="dashboardMotivation">Cada atividade registrada fortalece seu personagem.</p>
+<div class="global-level-row">
+<div aria-label="Nível global" class="global-level-orb">
+<span>NÍVEL</span>
+<strong id="globalLevelValue">1</strong>
+</div>
+<div class="global-progress-copy">
+<div class="progress-label">
+<span>Jornada até o nível 50</span>
+<strong id="globalJourneyPercent">0%</strong>
+</div>
+<div aria-label="Progresso global" aria-valuemax="100" aria-valuemin="0" class="progress-track progress-track-large" id="globalProgressTrack" role="progressbar">
+<span id="globalProgressBar"></span>
+</div>
+<small id="globalLevelDescription">Equilibre os seis atributos para avançar.</small>
+</div>
+</div>
+<div aria-label="Loop principal" class="reference-flow">
+<span>Realiza atividade</span>
+<span>Registra no RPG GYM</span>
+<span>Ganha XP e evolui</span>
+</div>
+<div class="hero-actions">
+<button class="primary-button" data-view-target="training" type="button">
+<span aria-hidden="true">＋</span> Registrar atividade
+              </button>
+<button class="secondary-button" data-view-target="missions" type="button">
+                Ver missões
+              </button>
+</div>
+</div>
+<div aria-hidden="true" class="hero-emblem">
+<div class="emblem-ring ring-one"></div>
+<div class="emblem-ring ring-two"></div>
+<div class="emblem-core">D20</div>
+<span class="spark spark-a">✦</span>
+<span class="spark spark-b">✦</span>
+<span class="spark spark-c">✦</span>
+</div>
+</div>
+<div class="stat-grid" id="dashboardStats">
+<article class="stat-card">
+<span aria-hidden="true" class="stat-icon">🔥</span>
+<div><small>Streak atual</small><strong id="dashboardStreak">0 dias</strong></div>
+</article>
+<article class="stat-card">
+<span aria-hidden="true" class="stat-icon">✓</span>
+<div><small>Atividades hoje</small><strong id="dashboardTodayActivities">0</strong></div>
+</article>
+<article class="stat-card">
+<span aria-hidden="true" class="stat-icon">✦</span>
+<div><small>XP acumulado</small><strong id="dashboardTotalXp">0 XP</strong></div>
+</article>
+<article class="stat-card">
+<span aria-hidden="true" class="stat-icon">◈</span>
+<div><small>Classes ativas</small><strong id="dashboardUnlockedClasses">0/6</strong></div>
+</article>
+</div>
+<div class="dashboard-grid">
+<section aria-labelledby="attributesTitle" class="panel panel-span-two">
+<div class="section-heading">
+<div>
+<p class="eyebrow">Status do personagem</p>
+<h2 id="attributesTitle">Seus atributos</h2>
+</div>
+<button class="text-button" data-view-target="character" type="button">Ver detalhes →</button>
+</div>
+<div class="attribute-grid" id="dashboardAttributes"></div>
+</section>
+<section aria-labelledby="dailyMissionTitle" class="panel">
+<div class="section-heading compact-heading">
+<div>
+<p class="eyebrow">Objetivos de hoje</p>
+<h2 id="dailyMissionTitle">Missões diárias</h2>
+</div>
+<span class="reset-label" id="dailyResetLabel">Renova hoje</span>
+</div>
+<div class="mission-list mission-list-compact" id="dashboardDailyMissions"></div>
+<button class="panel-footer-button" data-view-target="missions" type="button">Abrir todas as missões</button>
+</section>
+<section aria-labelledby="weeklySummaryTitle" class="panel panel-span-two">
+<div class="section-heading">
+<div>
+<p class="eyebrow">Últimos sete dias</p>
+<h2 id="weeklySummaryTitle">Resumo semanal</h2>
+</div>
+<strong class="section-metric" id="weeklyXpTotal">0 XP</strong>
+</div>
+<div class="weekly-summary">
+<div aria-label="XP obtido por dia nesta semana" class="week-chart" id="weekChart"></div>
+<div class="week-insights" id="weekInsights"></div>
+</div>
+</section>
+<section aria-labelledby="classesTitle" class="panel">
+<div class="section-heading compact-heading">
+<div>
+<p class="eyebrow">Especializações</p>
+<h2 id="classesTitle">Classes</h2>
+</div>
+</div>
+<div class="class-list" id="dashboardClasses"></div>
+</section>
+<section aria-labelledby="recentActivityTitle" class="panel panel-span-three">
+<div class="section-heading">
+<div>
+<p class="eyebrow">Registro da jornada</p>
+<h2 id="recentActivityTitle">Atividades recentes</h2>
+</div>
+<button class="text-button" data-view-target="character" type="button">Abrir histórico →</button>
+</div>
+<div class="history-list history-list-dashboard" id="dashboardRecentHistory"></div>
+</section>
+</div>
+</section>
+<section aria-labelledby="socialHeading" class="view" data-view-panel="social" hidden="" id="view-social">
+  <div class="social-app-shell">
+    <header class="social-home-header">
+      <div>
+        <p class="social-greeting">Olá, <span id="socialPlayerName">Jogador</span>!</p>
+        <p class="social-subtitle">Vamos evoluir juntos!</p>
+      </div>
+      <div class="social-header-actions">
+        <button class="social-icon-button" id="socialSearchToggle" type="button" aria-label="Pesquisar grupo">⌕</button>
+        <button class="social-icon-button help-button" data-help="social" aria-label="Como funciona a área Social" type="button">?</button>
+      </div>
+    </header>
+
+    <div id="socialHomePanel">
+      <section class="social-section">
+        <div class="social-section-title">
+          <h2 id="socialHeading">Missões semanais</h2>
+          <button class="social-link-button" data-view-target="missions" type="button">Ver todas ›</button>
+        </div>
+        <div class="social-mission-stack" id="socialWeeklyMissions"></div>
+      </section>
+
+      <section class="social-section social-group-section">
+        <div class="social-section-title">
+          <h2>Seu grupo</h2>
+          <button class="social-link-button" id="socialSeeGroup" type="button">Ver todos ›</button>
+        </div>
+        <div class="social-member-list" id="socialGroupMembers"></div>
+      </section>
+    </div>
+
+    <section class="social-subpanel" id="socialSearchPanel" hidden>
+      <div class="social-subpanel-head">
+        <button class="social-back-button" data-social-back type="button">‹ Voltar</button>
+        <strong>Pesquisar grupo</strong>
+        <span></span>
+      </div>
+      <label class="social-search-box">
+        <span aria-hidden="true">⌕</span>
+        <input id="socialGroupSearch" type="search" placeholder="Pesquisar grupos" autocomplete="off">
+      </label>
+      <div class="social-search-results" id="socialGroupSearchResults"></div>
+    </section>
+
+    <section class="social-subpanel" id="socialGroupPanel" hidden>
+      <div class="social-subpanel-head">
+        <button class="social-back-button" data-social-back type="button">‹ Voltar</button>
+        <strong>Grupo</strong>
+        <span></span>
+      </div>
+      <div id="socialGroupDetail"></div>
+    </section>
+
+    <section class="social-subpanel" id="socialMemberPanel" hidden>
+      <div class="social-subpanel-head">
+        <button class="social-back-button" data-social-back type="button">‹ Voltar</button>
+        <strong>Perfil</strong>
+        <span></span>
+      </div>
+      <div id="socialMemberDetail"></div>
+    </section>
+  </div>
+</section><section aria-labelledby="trainingHeading" class="view" data-view-panel="training" hidden id="view-training">
+  <div class="workout-page-head">
+    <div><h2 id="trainingHeading">Treino</h2><p>Suas rotinas de musculação</p></div>
+    <button class="help-button" data-help="strength" aria-label="Como funciona o treino" type="button">?</button>
+  </div>
+  <section class="strength-workout-shell workout-minimal-shell" aria-labelledby="strengthWorkoutTitle">
+    <div class="strength-hub" id="strengthWorkoutHub">
+      <button class="workout-empty-start" id="startEmptyWorkout" type="button"><span>＋</span><strong>Iniciar treinamento vazio</strong></button>
+      <div class="routine-section-head"><h3 id="strengthWorkoutTitle">Rotinas</h3></div>
+      <div class="routine-actions-minimal">
+        <button id="createRoutineButton" type="button"><span>▣</span><strong>Nova rotina</strong></button>
+        <button id="browseExercisesButton" type="button"><span>⌕</span><strong>Explorar exercícios</strong></button>
+      </div>
+      <div class="my-routines-head"><strong>Minhas rotinas <span id="routineCount"></span></strong></div>
+      <div class="routine-list" id="routineList"></div>
+    </div>
+    <div class="active-workout" hidden id="activeWorkoutPanel">
+      <div class="active-workout-topbar">
+        <button class="workout-link danger-link" id="cancelWorkoutButton" type="button">Cancelar</button>
+        <div class="active-workout-topbar-title">Treino em andamento</div>
+        <button class="workout-finish-button" id="finishWorkoutButton" type="button">Finalizar</button>
+      </div>
+      <div class="active-workout-title-row">
+        <input aria-label="Nome do treino" class="active-workout-name" id="activeWorkoutName" maxlength="60" value="Treino"/>
+        <div class="workout-live-stats">
+          <span><small>Tempo</small><strong id="workoutElapsed">00:00</strong></span>
+          <span><small>Volume</small><strong id="workoutVolume">0 kg</strong></span>
+          <span><small>Séries</small><strong id="workoutCompletedSets">0</strong></span>
+        </div>
+      </div>
+      <div class="workout-exercise-list" id="workoutExerciseList"></div>
+      <button class="add-exercise-main" id="addExerciseButton" type="button"><span>＋</span> Adicionar exercício</button>
+      <button class="save-routine-inline" id="saveWorkoutAsRoutine" type="button">Salvar como rotina</button>
+    </div>
+  </section>
+</section><section aria-labelledby="cardioHeading" class="view" data-view-panel="cardio" hidden="" id="view-cardio"><div class="page-heading compact-page-heading"><div><h2 id="cardioHeading">Cardio</h2></div><div class="heading-actions"><button class="help-button" data-help="cardio" aria-label="Tutorial de cardio" type="button">?</button></div></div><article class="activity-card cardio-reference-card" data-activity-card="cardio" style="--activity-accent: var(--constitution);">
+<div class="cardio-launch-panel" id="cardioLaunchPanel">
+<div class="cardio-type-step">
+<p class="cardio-step-label">Escolha a atividade</p>
+<label class="cardio-mode-pill">
+<select aria-label="Tipo de cardio" id="cardioMode">
+<option value="treadmill">Esteira</option>
+<option value="outdoor_run">Corrida ao ar livre</option>
+<option value="stationary_bike">Bicicleta ergométrica</option>
+<option value="outdoor_bike">Ciclismo ao ar livre</option>
+<option value="elliptical">Elíptico</option>
+<option value="stair_climber">Escada / Stair climber</option>
+<option value="rowing">Remo ergométrico</option>
+<option value="jump_rope">Corda</option>
+<option value="swimming">Natação</option>
+</select>
+<span aria-hidden="true" class="pill-arrow">⌄</span>
+</label>
+</div>
+<button aria-label="Iniciar cardio" class="cardio-start-orb" id="cardioStartButton" type="button">
+<span class="cardio-start-label">Iniciar</span>
+<span aria-hidden="true" class="cardio-play"></span>
+</button>
+<p class="cardio-type-hint" id="cardioTypeHint">Ao finalizar, informe distância, velocidade média e inclinação.</p>
+<div class="cardio-start-meta">
+<span><small>Registrar ao finalizar</small><strong id="cardioRequiredPreview">Distância • velocidade • inclinação</strong></span>
+<span><small>Atributo</small><strong id="cardioAttributePreview">Constituição</strong></span>
+</div>
+</div>
+<div class="cardio-live-panel" hidden="" id="cardioLivePanel">
+<div class="cardio-timer-ring">
+<strong id="cardioTimerDisplay">00:00:00</strong>
+<span id="cardioTimerState">Cardio em andamento</span>
+</div>
+<div class="cardio-live-actions">
+<button aria-label="Finalizar cardio" class="cardio-stop-button" id="cardioStopButton" type="button"><span></span></button>
+<button aria-label="Pausar cardio" class="cardio-pause-button" id="cardioPauseButton" type="button"><span></span><span></span></button>
+</div>
+<div class="cardio-live-stats">
+<div><small>Tipo</small><strong id="cardioLiveType">Esteira</strong></div>
+<div><small>Ao finalizar</small><strong id="cardioLiveDistance">Distância</strong></div>
+<div><small>XP estimado</small><strong id="preview-cardio">20 XP</strong></div>
+</div>
+</div>
+</article>
+<section class="cardio-history-section" aria-labelledby="cardioHistoryHeading">
+<button class="cardio-history-heading" id="cardioHistoryToggle" type="button" aria-expanded="true">
+<span><small>Seus registros</small><strong id="cardioHistoryHeading">Histórico de cardio</strong></span>
+<span aria-hidden="true" class="cardio-history-chevron">⌄</span>
+</button>
+<div class="cardio-history-list" id="cardioHistoryList"></div>
+</section>
+</section>
+<section aria-labelledby="missionsHeading" class="view" data-view-panel="missions" hidden="" id="view-missions">
+<div class="page-heading">
+<div>
+<p class="eyebrow">Objetivos que constroem consistência</p>
+<h2 id="missionsHeading">Missões</h2>
+<p>Complete atividades, acompanhe o progresso e resgate XP ou buffs.</p>
+</div>
+<div class="page-heading-badge mission-badge">
+<span aria-hidden="true">✦</span>
+<div><small>Concluídas</small><strong id="missionCompletedCount">0</strong></div>
+</div>
+</div>
+<div class="mission-columns">
+<section aria-labelledby="dailyMissionsFullTitle" class="panel">
+<div class="section-heading">
+<div>
+<p class="eyebrow">Renovação diária</p>
+<h2 id="dailyMissionsFullTitle">Missões diárias</h2>
+</div>
+<span class="reset-label" id="dailyCountdown">Hoje</span>
+</div>
+<div class="mission-list" id="dailyMissionList"></div>
+</section>
+<section aria-labelledby="weeklyMissionsFullTitle" class="panel">
+<div class="section-heading">
+<div>
+<p class="eyebrow">Desafios maiores</p>
+<h2 id="weeklyMissionsFullTitle">Missões semanais</h2>
+</div>
+<span class="reset-label" id="weeklyCountdown">Esta semana</span>
+</div>
+<div class="mission-list" id="weeklyMissionList"></div>
+</section>
+</div>
+</section>
+<section aria-labelledby="dietHeading" class="view" data-view-panel="diet" hidden="" id="view-diet">
+<div class="diet-reference-shell">
+<header class="diet-day-header">
+<button aria-label="Dia anterior" id="dietPrevDay" type="button">◀</button>
+<div><small>Dieta</small><h2 id="dietHeading">Hoje</h2><span id="dietDateLabel"></span></div>
+<div class="diet-header-actions"><button class="diet-targets-button" id="dietTargetsButton" aria-label="Configurar referências diárias" type="button">⚙</button><button class="diet-help-button" data-help="diet" aria-label="Tutorial da dieta" type="button">?</button><button aria-label="Próximo dia" id="dietNextDay" type="button">▶</button></div>
+</header>
+<section aria-label="Resumo nutricional" class="diet-macro-summary">
+<div><span>Carboidratos</span><strong id="dietCarbs">0 g</strong><small id="dietCarbsTarget">/ 300 g</small><i><b id="dietCarbsBar"></b></i></div>
+<div><span>Proteína</span><strong id="dietProtein">0 g</strong><small id="dietProteinTarget">/ 160 g</small><i><b id="dietProteinBar"></b></i></div>
+<div><span>Gorduras</span><strong id="dietFat">0 g</strong><small id="dietFatTarget">/ 70 g</small><i><b id="dietFatBar"></b></i></div>
+<div class="diet-calories"><strong id="dietCalories">0 / 2500 kcal</strong><span>Referência diária</span><small id="dietFiber">Fibra 0 g</small><i><b id="dietCaloriesBar"></b></i></div>
+</section>
+<div class="diet-meals" id="dietMeals"></div>
+<button class="diet-finish-button" id="finishDietDay" type="button">Finalizar Dia</button>
+</div>
+</section><section aria-labelledby="characterHeading" class="view" data-view-panel="character" hidden="" id="view-character">
+<div class="character-hero panel">
+<div class="character-avatar-wrap compact-avatar-wrap">
+<div class="character-avatar compact-avatar" id="characterAvatar">JG</div>
+<span class="character-level-badge">Nv. <strong id="characterLevelBadge">1</strong></span>
+</div>
+<div class="character-identity">
+<p class="eyebrow">Perfil do jogador</p>
+<h2 id="characterHeading">Jogador</h2>
+<div class="profile-action-row"><button aria-controls="profileSettingsOverlay" aria-haspopup="dialog" class="profile-settings-button" id="profileSettingsButton" type="button">Configurações</button><button class="help-button" data-help="profile" aria-label="Entender o perfil e os atributos" type="button">?</button></div>
+<p class="character-title" id="characterTitle">Novato</p>
+<div class="character-meta">
+<span><strong id="characterTotalXp">0</strong> XP total</span>
+<span><strong id="characterMilestoneCount">0</strong> marcos</span>
+<span><strong id="characterClassCount">0</strong> classes</span>
+</div>
+</div>
+<div class="character-radar-wrap reference-radar-map">
+<div class="map-attribute map-agility" data-map-attribute="agility"><strong>Agilidade</strong><small id="map-agility">Nv. 1</small></div>
+<div class="map-attribute map-force" data-map-attribute="force"><strong>Força</strong><small id="map-force">Nv. 1</small></div>
+<div class="map-attribute map-constitution" data-map-attribute="constitution"><strong>Constituição</strong><small id="map-constitution">Nv. 1</small></div>
+<div class="map-attribute map-intelligence" data-map-attribute="intelligence"><strong>Inteligência</strong><small id="map-intelligence">Nv. 1</small></div>
+<div class="map-attribute map-determination" data-map-attribute="determination"><strong>Determinação</strong><small id="map-determination">Nv. 1</small></div>
+<div class="map-attribute map-charisma" data-map-attribute="charisma"><strong>Carisma</strong><small id="map-charisma">Nv. 1</small></div>
+<canvas aria-label="Gráfico dos níveis dos seis atributos" height="360" id="radarChart" width="360"></canvas>
+</div>
+</div>
+<div class="character-grid">
+<section aria-labelledby="characterAttributesTitle" class="panel panel-span-two">
+<div class="section-heading">
+<div>
+<p class="eyebrow">Progressão individual</p>
+<h2 id="characterAttributesTitle">Atributos e mentores</h2>
+</div>
+</div>
+<div class="character-attribute-list" id="characterAttributeList"></div>
+</section>
+<section aria-labelledby="classCollectionTitle" class="panel">
+<div class="section-heading compact-heading">
+<div>
+<p class="eyebrow">Coleção</p>
+<h2 id="classCollectionTitle">Classes</h2>
+</div>
+</div>
+<div class="class-collection" id="characterClassCollection"></div>
+</section>
+<section aria-labelledby="titlesCollectionTitle" class="panel panel-span-three">
+<div class="section-heading">
+<div>
+<p class="eyebrow">Conquistas permanentes</p>
+<h2 id="titlesCollectionTitle">Títulos desbloqueados</h2>
+</div>
+</div>
+<div class="title-chip-list" id="titleChipList"></div>
+</section>
+<section aria-labelledby="historyTitle" class="panel panel-span-three history-panel" id="profileHistoryPanel">
+<div class="section-heading history-heading">
+<div>
+<p class="eyebrow">Registro da jornada</p>
+<h2 id="historyTitle">Histórico de atividades</h2>
+</div>
+<label class="filter-label">
+<span class="sr-only">Filtrar por atributo</span>
+<select id="historyFilter">
+<option value="all">Todos os atributos</option>
+<option value="force">Força</option>
+<option value="agility">Agilidade</option>
+<option value="constitution">Constituição</option>
+<option value="intelligence">Inteligência</option>
+<option value="determination">Determinação</option>
+<option value="charisma">Carisma</option>
+</select>
+</label>
+</div>
+<div class="history-list history-list-full" id="fullHistoryList"></div>
+</section>
+</div>
+</section>
+</main>
+<nav aria-label="Navegação principal mobile" class="mobile-nav"><button class="mobile-nav-item is-active" data-view="social" type="button"><span aria-hidden="true">◎</span><small>Social</small></button><button class="mobile-nav-item" data-view="training" type="button"><span aria-hidden="true">⚔</span><small>Treino</small></button><button class="mobile-nav-item" data-view="cardio" type="button"><span aria-hidden="true">◉</span><small>Cardio</small></button><button class="mobile-nav-item" data-view="diet" type="button"><span aria-hidden="true">◔</span><small>Dieta</small></button><button class="mobile-nav-item" data-view="character" type="button"><span aria-hidden="true">◈</span><small>Perfil</small></button></nav>
+</div>
+<div class="help-overlay" hidden id="helpOverlay">
+<section class="help-modal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+<header><div><p class="eyebrow">Guia rápido</p><h2 id="helpModalTitle">Como funciona</h2></div><button id="closeHelpOverlay" aria-label="Fechar tutorial" type="button">×</button></header>
+<div id="helpModalContent" class="help-modal-content"></div>
+</section>
+</div>
+<div class="profile-settings-overlay" hidden="" id="profileSettingsOverlay">
+<section aria-labelledby="profileSettingsTitle" aria-modal="true" class="profile-settings-modal" role="dialog">
+<header class="profile-settings-header">
+<div>
+<p class="eyebrow">Somente neste dispositivo</p>
+<h2 id="profileSettingsTitle">Configurações do perfil</h2>
+</div>
+<button aria-label="Fechar configurações" class="profile-settings-close" id="closeProfileSettings" type="button">×</button>
+</header>
+<div class="profile-settings-summary">
+<span>Melhor streak</span><strong id="profileBestStreak">0 dias</strong>
+</div>
+<form class="profile-form" id="profileForm">
+<label class="field-label field-span-two">
+<span>Nome do jogador</span>
+<input autocomplete="name" id="profileName" maxlength="40" required="" type="text"/>
+</label>
+<label class="field-label">
+<span>Peso <small>(kg)</small></span>
+<input id="profileWeight" inputmode="decimal" max="400" min="20" placeholder="Ex.: 75" step="0.1" type="number"/>
+</label>
+<label class="field-label">
+<span>Altura <small>(cm)</small></span>
+<input id="profileHeight" inputmode="numeric" max="250" min="80" placeholder="Ex.: 175" step="1" type="number"/>
+</label>
+<label class="field-label field-span-two">
+<span>Objetivo</span>
+<select id="profileGoal">
+<option>Criar consistência</option>
+<option>Ganhar força</option>
+<option>Ganhar massa muscular</option>
+<option>Melhorar condicionamento</option>
+<option>Perder gordura</option>
+<option>Saúde e bem-estar</option>
+</select>
+</label>
+<label class="field-label field-span-two">
+<span>Frequência de treino</span>
+<select id="profileFrequency">
+<option>1–2 vezes por semana</option>
+<option>3 vezes por semana</option>
+<option>4 vezes por semana</option>
+<option>5 vezes por semana</option>
+<option>6–7 vezes por semana</option>
+</select>
+</label>
+<button class="primary-button field-span-two" type="submit">Salvar alterações</button>
+</form>
+<div class="danger-zone profile-settings-danger">
+<div>
+<strong>Resetar progresso</strong>
+<p>Apaga níveis, XP, missões, streak, treinos e histórico deste navegador.</p>
+</div>
+<button class="danger-button" id="resetProgressButton" type="button">Resetar</button>
+</div>
+</section>
+</div>
+<div class="workout-modal-overlay" hidden="" id="exercisePickerOverlay">
+<div aria-labelledby="exercisePickerTitle" aria-modal="true" class="workout-modal exercise-picker-modal" role="dialog">
+<div class="workout-modal-header">
+<button class="modal-link" id="closeExercisePicker" type="button">Cancelar</button>
+<h2 id="exercisePickerTitle">Adicionar exercício</h2>
+<button class="modal-link modal-link-primary" id="confirmExercisePicker" type="button">Adicionar</button>
+</div>
+<div class="exercise-search-wrap">
+<span aria-hidden="true">⌕</span>
+<input autocomplete="off" id="exerciseSearch" placeholder="Pesquisar exercício" type="search"/>
+</div>
+<div class="exercise-filter-row">
+<select aria-label="Filtrar por músculo" id="exerciseMuscleFilter"><option value="all">Todos os músculos</option></select>
+<select aria-label="Filtrar por equipamento" id="exerciseEquipmentFilter"><option value="all">Todos equipamentos</option></select>
+</div>
+<div class="exercise-picker-results" id="exercisePickerResults"></div>
+</div>
+</div>
+<div class="workout-modal-overlay" hidden="" id="routineEditorOverlay">
+<div aria-labelledby="routineEditorTitle" aria-modal="true" class="workout-modal routine-editor-modal" role="dialog">
+<div class="workout-modal-header">
+<button class="modal-link" id="closeRoutineEditor" type="button">Cancelar</button>
+<h2 id="routineEditorTitle">Criar rotina</h2>
+<button class="modal-link modal-link-primary" id="saveRoutineButton" type="button">Salvar</button>
+</div>
+<label class="routine-name-field"><span>Nome da rotina</span><input id="routineNameInput" maxlength="60" placeholder="Ex.: Peito e tríceps"/></label>
+<div class="routine-editor-exercises" id="routineEditorExercises"></div>
+<button class="add-exercise-main" id="addExerciseToRoutineButton" type="button"><span>＋</span> Adicionar exercício</button>
+<button class="routine-delete-button" hidden id="deleteRoutineEditorButton" type="button">Excluir rotina</button>
+</div>
+</div>
+<div class="action-confirm-overlay" hidden id="actionConfirmOverlay">
+<section class="action-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="actionConfirmTitle">
+<div class="action-confirm-icon" id="actionConfirmIcon">!</div>
+<h2 id="actionConfirmTitle">Confirmar ação?</h2>
+<p id="actionConfirmMessage">Revise antes de continuar.</p>
+<div class="action-confirm-details" hidden id="actionConfirmDetails"></div>
+<div class="action-confirm-actions">
+<button class="action-confirm-secondary" id="actionConfirmCancel" type="button">Voltar</button>
+<button class="action-confirm-primary" id="actionConfirmContinue" type="button">Confirmar</button>
+</div>
+</section>
+</div>
+<div class="workout-result-overlay" hidden id="workoutResultOverlay">
+<section class="workout-result-modal" role="dialog" aria-modal="true" aria-labelledby="workoutResultTitle">
+<p class="workout-result-kicker">TREINO FINALIZADO</p>
+<h2 id="workoutResultTitle">Bom trabalho!</h2>
+<div class="workout-result-xp"><span>XP DE FORÇA</span><strong id="workoutResultXp">+0 XP</strong><small id="workoutResultXpBreakdown">0 XP base</small></div>
+<div class="workout-result-level">
+<div><span id="workoutResultForceLevel">Força • Nv. 1</span><strong id="workoutResultForceProgress">0 / 100 XP</strong></div>
+<i><b id="workoutResultForceBar"></b></i>
+</div>
+<div class="workout-result-grid">
+<div><small>Séries</small><strong id="workoutResultSets">0</strong></div>
+<div><small>Exercícios</small><strong id="workoutResultExercises">0</strong></div>
+<div><small>Volume</small><strong id="workoutResultVolume">0 kg</strong></div>
+<div><small>Tempo</small><strong id="workoutResultDuration">00:00</strong></div>
+</div>
+<div class="workout-result-bonus" id="workoutResultBonus"></div>
+<button class="workout-result-close" id="closeWorkoutResult" type="button">Continuar</button>
+</section>
+</div>
+<div class="rest-timer" hidden="" id="restTimer">
+<div><small>Descanso</small><strong id="restTimerValue">01:30</strong></div>
+<button id="restMinusButton" type="button">−15s</button>
+<button id="restPlusButton" type="button">+30s</button>
+<button id="restSkipButton" type="button">Pular</button>
+</div>
+<div aria-atomic="false" aria-live="polite" class="toast-region" id="toastRegion"></div>
+<div class="cardio-confirm-overlay" hidden="" id="cardioConfirmOverlay">
+<div aria-labelledby="cardioConfirmTitle" aria-modal="true" class="cardio-confirm-card" role="dialog">
+<button class="cardio-confirm-back" id="cardioConfirmBack" type="button">‹ Voltar</button>
+<h2 id="cardioConfirmTitle">CONFIRMAR REGISTRO?</h2>
+<div class="cardio-confirm-summary">
+<div><small>Atividade</small><strong id="cardioConfirmType">Esteira</strong></div>
+<div><small>Tempo</small><strong id="cardioConfirmTime">00:00</strong></div>
+<div><small>XP estimado</small><strong id="cardioConfirmXp">0 XP</strong></div>
+</div>
+<div class="cardio-confirm-fields" id="cardioConfirmFields"></div>
+<p class="cardio-confirm-note" id="cardioConfirmNote">Preencha os dados da máquina ou atividade para concluir o registro.</p>
+<div class="cardio-confirm-actions">
+<button class="cardio-cancel-confirm" id="cardioCancelConfirm" type="button">Cancelar</button>
+<button class="cardio-continue-confirm" id="cardioContinueConfirm" type="button">Continuar</button>
+</div>
+</div>
+</div>
+<div aria-live="assertive" class="celebration" hidden="" id="celebration">
+<div aria-hidden="true" class="celebration-particles">
+<i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+</div>
+<div class="celebration-card">
+<span aria-hidden="true" class="celebration-icon" id="celebrationIcon">✦</span>
+<p id="celebrationKicker">Evolução</p>
+<h2 id="celebrationTitle">Level up!</h2>
+<p id="celebrationMessage">Seu personagem ficou mais forte.</p>
+<button class="primary-button" id="closeCelebrationButton" type="button">Continuar</button>
+</div>
+</div>
+<div class="food-picker-overlay" hidden="" id="foodPickerOverlay">
+<section aria-labelledby="foodPickerTitle" aria-modal="true" class="food-picker-modal" role="dialog">
+<header><button id="closeFoodPicker" type="button">‹ Voltar</button><h2 id="foodPickerTitle">Pesquisar alimento</h2></header>
+<div class="food-search-box"><span>⌕</span><input autocomplete="off" id="foodSearch" placeholder="Ex.: arroz, frango, banana..." type="search"/></div>
+<div class="food-picker-meta"><span id="foodSearchCount">0 alimentos</span><small>Dados por 100 g • TACO/UNICAMP</small></div>
+<div class="food-result-list" id="foodResultList"></div>
+</section>
+</div>
+<div class="diet-settings-overlay" hidden id="dietSettingsOverlay">
+<section class="diet-settings-modal" role="dialog" aria-modal="true" aria-labelledby="dietSettingsTitle">
+<header><div><small>Dieta</small><h2 id="dietSettingsTitle">Referências diárias</h2></div><button id="closeDietSettings" type="button" aria-label="Fechar">×</button></header>
+<p>Defina valores de referência para acompanhar seu dia. Eles não alteram o sistema RPG.</p>
+<form id="dietTargetsForm">
+<label><span>Calorias</span><div><input id="dietTargetCalories" type="number" min="500" max="8000" step="50" required><small>kcal</small></div></label>
+<label><span>Carboidratos</span><div><input id="dietTargetCarbs" type="number" min="20" max="1000" step="5" required><small>g</small></div></label>
+<label><span>Proteína</span><div><input id="dietTargetProtein" type="number" min="20" max="500" step="5" required><small>g</small></div></label>
+<label><span>Gorduras</span><div><input id="dietTargetFat" type="number" min="10" max="500" step="5" required><small>g</small></div></label>
+<button class="diet-settings-save" type="submit">Salvar referências</button>
+</form>
+</section>
+</div>
+<div class="diet-edit-overlay" hidden id="dietEditOverlay">
+<section class="diet-edit-modal" role="dialog" aria-modal="true" aria-labelledby="dietEditTitle">
+<header><div><small>Editar registro</small><h2 id="dietEditTitle">Alimento</h2></div><button id="closeDietEdit" type="button" aria-label="Fechar">×</button></header>
+<p id="dietEditNutrition"></p>
+<label class="diet-edit-grams"><span>Quantidade</span><div><input id="dietEditGrams" type="number" min="1" max="2000" step="1"><small>g</small></div></label>
+<div class="diet-edit-actions"><button id="dietDeleteFood" class="diet-edit-delete" type="button">Remover</button><button id="dietSaveFood" class="diet-edit-save" type="button">Salvar</button></div>
+</section>
+</div>
+</body>
+</html>
