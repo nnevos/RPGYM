@@ -42,6 +42,39 @@ function writeCloudMeta(values = {}, userId = authSession?.user?.id) {
   try { localStorage.setItem(cloudMetaKey(userId), JSON.stringify({ ...current, ...values })); } catch (_error) {}
 }
 
+function localDirtyKey(userId = authSession?.user?.id || window.RPG_GYM_AUTH_USER_ID) {
+  return userId ? `rpgym:pending-local-save:${userId}` : "rpgym:pending-local-save:local";
+}
+
+function readLocalSaveDirty(userId = authSession?.user?.id || window.RPG_GYM_AUTH_USER_ID) {
+  try { return JSON.parse(localStorage.getItem(localDirtyKey(userId)) || "{}"); }
+  catch (_error) { return {}; }
+}
+
+function markLocalSaveDirty(domain, updatedAt = new Date().toISOString(), userId = authSession?.user?.id || window.RPG_GYM_AUTH_USER_ID) {
+  if (!domain) return;
+  const current = readLocalSaveDirty(userId);
+  current[domain] = updatedAt || new Date().toISOString();
+  try { localStorage.setItem(localDirtyKey(userId), JSON.stringify(current)); } catch (_error) {}
+}
+
+function isLocalSaveDirty(domain, userId = authSession?.user?.id || window.RPG_GYM_AUTH_USER_ID) {
+  return Boolean(readLocalSaveDirty(userId)?.[domain]);
+}
+
+function clearLocalSaveDirtyIfSynced(domain, syncedThrough, userId = authSession?.user?.id || window.RPG_GYM_AUTH_USER_ID) {
+  const current = readLocalSaveDirty(userId);
+  const dirtyAt = stateTimestamp(current?.[domain], 0);
+  const syncedAt = stateTimestamp(syncedThrough, 0);
+  if (!dirtyAt || !syncedAt || dirtyAt > syncedAt) return false;
+  delete current[domain];
+  try {
+    if (Object.keys(current).length) localStorage.setItem(localDirtyKey(userId), JSON.stringify(current));
+    else localStorage.removeItem(localDirtyKey(userId));
+  } catch (_error) {}
+  return true;
+}
+
 function getLocalSaveSnapshot() {
   let game = null, diet = null;
   try { const raw = localStorage.getItem(getGameStorageKey()); if (raw) game = JSON.parse(raw); } catch (_error) {}
@@ -221,23 +254,31 @@ function createVersionUpgradeBackup(snapshot) {
   }
 }
 
-function chooseDomain(localValue, cloudValue, localTs, cloudTs) {
+function chooseDomain(domain, localValue, cloudValue, localTs, cloudTs) {
   if (!cloudValue && localValue) return { value: localValue, source: "local" };
   if (!localValue && cloudValue) return { value: cloudValue, source: "cloud" };
   if (!localValue && !cloudValue) return { value: null, source: "none" };
-  if (localTs > cloudTs + CLOUD_TIME_TOLERANCE_MS) return { value: localValue, source: "local" };
+
+  // Uma alteração local ainda não confirmada pela nuvem NUNCA pode ser
+  // descartada por reload, boot ou diferença pequena de relógio.
+  if (isLocalSaveDirty(domain)) return { value: localValue, source: "local", dirty: true };
+
+  // Sem pendência local, compara timestamps sem janela de tolerância destrutiva.
+  if (localTs > cloudTs) return { value: localValue, source: "local" };
   return { value: cloudValue, source: "cloud" };
 }
 
 function reconcileSaveDomains(local, data) {
   const serverTs = cloudTimestamp(data);
   const gameChoice = chooseDomain(
+    "game",
     local?.game || null,
     data?.game_state || null,
     gameSnapshotTimestamp(local?.game),
     gameSnapshotTimestamp(data?.game_state, serverTs)
   );
   const dietChoice = chooseDomain(
+    "diet",
     local?.diet || null,
     data?.diet_state || null,
     dietSnapshotTimestamp(local?.diet),
@@ -344,28 +385,32 @@ async function preloadCloudSaveForUser() {
   }
 
   const local = getLocalSaveSnapshot();
-  const localTs = localSnapshotTimestamp(local);
-  const cloudTs = cloudTimestamp(data);
-
-  // Regra de resolução automática:
-  // 1) nuvem é a fonte preferida;
-  // 2) se o cache local for comprovadamente mais novo, ele sobe para a nuvem após o boot;
-  // 3) em empate ou nuvem mais nova, a nuvem vence;
-  // 4) nunca bloquear a entrada esperando decisão manual.
-  if (data && cloudTs + CLOUD_TIME_TOLERANCE_MS >= localTs) {
-    setCloudPendingSnapshot(data.game_state, data.diet_state, data.updated_at);
+  if (data) {
+    const reconciled = reconcileSaveDomains(local, data);
+    setCloudPendingSnapshot(
+      reconciled.game.source === "cloud" ? reconciled.game.value : null,
+      reconciled.diet.source === "cloud" ? reconciled.diet.value : null,
+      data.updated_at
+    );
+    if (reconciled.game.source === "local" || reconciled.diet.source === "local") {
+      window.RPG_GYM_UPLOAD_LOCAL_AFTER_BOOT = true;
+    }
     cloudHydratedForUser = userId;
-    writeCloudMeta({ lastSyncedAt: data.updated_at, lastServerUpdatedAt: data.updated_at, resolution: "cloud-auto" }, userId);
+    writeCloudMeta({
+      lastSyncedAt: data.updated_at,
+      lastServerUpdatedAt: data.updated_at,
+      resolution: `preload-game-${reconciled.game.source}-diet-${reconciled.diet.source}`
+    }, userId);
     updateCloudStatusLabel("synced");
-    return { source: "cloud", updatedAt: data.updated_at };
+    return { source: "reconciled", updatedAt: data.updated_at };
   }
 
-  setCloudPendingSnapshot(null, null, data?.updated_at || null);
+  setCloudPendingSnapshot(null, null, null);
   cloudHydratedForUser = userId;
   if (local.game || local.diet) window.RPG_GYM_UPLOAD_LOCAL_AFTER_BOOT = true;
-  writeCloudMeta({ resolution: data ? "local-newer-auto" : "local-first-auto" }, userId);
+  writeCloudMeta({ resolution: "local-first-auto" }, userId);
   updateCloudStatusLabel("local");
-  return { source: data ? "local-newer" : "local-first" };
+  return { source: "local-first" };
 }
 
 function consumePendingCloudGame() {
@@ -409,6 +454,8 @@ async function pushCloudSaveNow() {
       cloudLastServerUpdatedAt = data?.updated_at || new Date().toISOString();
       window.RPG_GYM_CLOUD_LAST_SYNC_AT = cloudLastServerUpdatedAt;
       writeCloudMeta({ lastSyncedAt: cloudLastServerUpdatedAt, lastServerUpdatedAt: cloudLastServerUpdatedAt, resolution: "uploaded" });
+      clearLocalSaveDirtyIfSynced("game", payload.game_state?.lastSavedAt);
+      clearLocalSaveDirtyIfSynced("diet", payload.diet_state?.updatedAt);
       cloudDirtyWhileOffline = false;
       updateCloudStatusLabel("synced");
       return true;
@@ -596,5 +643,6 @@ window.addEventListener("offline", () => {
 Object.assign(window, {
   preloadCloudSaveForUser, consumePendingCloudGame, consumePendingCloudDiet, prepareCloudBootstrapSnapshot,
   scheduleCloudSync, flushCloudSync, bootstrapCloudSyncAfterGameInit,
-  reconcileCloudAfterReconnect, updateCloudStatusLabel
+  reconcileCloudAfterReconnect, updateCloudStatusLabel,
+  markLocalSaveDirty, isLocalSaveDirty
 });

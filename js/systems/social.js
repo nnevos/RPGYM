@@ -362,29 +362,90 @@ async function openSocialGroup(groupId = socialCurrentGroup?.id) {
   }
 }
 
+function socialJoinFriendlyError(error) {
+  const message = String(error?.message || error?.details || error?.hint || "").toLowerCase();
+  if (!navigator.onLine) return "Você está offline. Reconecte e tente novamente.";
+  if (message.includes("authentication required") || message.includes("jwt") || message.includes("token")) {
+    return "Sua sessão expirou. Entre novamente na conta e tente de novo.";
+  }
+  if (message.includes("already belongs") || message.includes("already a member") || message.includes("duplicate key")) {
+    return "Sua conta ainda consta em outro grupo. O app vai atualizar seu vínculo e você pode tentar novamente.";
+  }
+  if (message.includes("group not found")) return "Este grupo não existe mais.";
+  if (message.includes("group is not public")) return "Este grupo não está aberto para entrada.";
+  if (message.includes("permission denied") || message.includes("row-level security") || message.includes("rls")) {
+    return "O Supabase recusou a entrada por permissão. Verifique se a migration de segurança mais recente foi aplicada.";
+  }
+  if (message.includes("function") && message.includes("join_social_group")) {
+    return "A função de entrada em grupos não está disponível no Supabase publicado.";
+  }
+  return "Não foi possível entrar neste grupo agora. Tente novamente.";
+}
+
+async function getServerMembership() {
+  if (!socialReady()) return null;
+  const { data, error } = await supabaseClient
+    .from("group_members")
+    .select("group_id,user_id,role,joined_at")
+    .eq("user_id", authSession.user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
 async function joinSocialGroup(groupId) {
-  if (!socialReady()) return;
+  if (!socialReady() || !groupId) return;
+
   const perform = async () => {
     try {
-      const userId = authSession.user.id;
-      if (socialCurrentGroup?.id && socialCurrentGroup.id !== groupId) {
-        const { error: leaveError } = await supabaseClient.rpc("leave_social_group", { target_group: socialCurrentGroup.id });
+      // Sempre conferir o vínculo real no servidor antes de entrar.
+      const membership = await getServerMembership();
+
+      if (membership?.group_id === groupId) {
+        socialLastLoadedAt = 0;
+        await ensureSocialLoaded(true);
+        showToast("Você já está neste grupo", socialCurrentGroup?.name || "Vínculo atualizado.", "◎");
+        showSocialPanel("socialHomePanel");
+        renderSocialHome();
+        return;
+      }
+
+      // Se o servidor ainda registra outro grupo, sair dele antes de entrar no novo.
+      if (membership?.group_id && membership.group_id !== groupId) {
+        const { error: leaveError } = await supabaseClient.rpc("leave_social_group", {
+          target_group: membership.group_id
+        });
         if (leaveError) throw leaveError;
       }
-      const { error } = await supabaseClient.rpc("join_social_group", { target_group: groupId });
-      if (error) throw error;
+
+      const { error: joinError } = await supabaseClient.rpc("join_social_group", {
+        target_group: groupId
+      });
+      if (joinError) throw joinError;
+
+      socialCurrentGroup = null;
+      socialCurrentMembers = [];
+      socialMemberProfiles = new Map();
       socialLastLoadedAt = 0;
-      await syncSocialSnapshotNow();
+
+      // Carregar primeiro o estado real do grupo; snapshot social não deve bloquear a entrada.
       await ensureSocialLoaded(true);
+      try { await syncSocialSnapshotNow(); } catch (snapshotError) {
+        console.warn("Grupo entrou, mas o snapshot social não sincronizou ainda.", snapshotError);
+      }
+
       showToast("Grupo atualizado", `Você entrou em ${socialCurrentGroup?.name || "um grupo"}.`, "◎");
       showSocialPanel("socialHomePanel");
       renderSocialHome();
     } catch (error) {
-      console.warn(error);
-      showToast("Não foi possível entrar", "Confira sua conexão e tente novamente.", "!");
+      console.warn("Falha ao entrar no grupo:", error);
+      socialLastLoadedAt = 0;
+      try { await loadCurrentSocialGroup(true); } catch (_refreshError) {}
+      showToast("Não foi possível entrar", socialJoinFriendlyError(error), "!");
     }
   };
 
+  // A confirmação visual usa o estado conhecido, mas o perform valida de novo no servidor.
   if (socialCurrentGroup && socialCurrentGroup.id !== groupId) {
     requestConfirmation({
       title: "Trocar de grupo?",

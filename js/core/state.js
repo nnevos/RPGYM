@@ -9,12 +9,22 @@ function init() {
   refreshMissionProgress();
   syncDerivedState();
   evaluateAchievements({ silent: true });
-  saveGame();
+  saveGame({ markDirty: false, touchTimestamp: false });
   bindEvents();
   hydrateProfileForm();
   updateUI();
   setActiveView("social", false);
-  window.addEventListener("pagehide", () => { flushScheduledSave(); if (typeof flushCloudSync === "function") flushCloudSync(); }, { passive: true });
+  window.addEventListener("pagehide", () => {
+    flushScheduledSave();
+    try { localStorage.setItem(getGameStorageKey(), JSON.stringify(state)); } catch (_error) {}
+    if (typeof flushCloudSync === "function") flushCloudSync();
+  }, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      flushScheduledSave();
+      try { localStorage.setItem(getGameStorageKey(), JSON.stringify(state)); } catch (_error) {}
+    }
+  });
   if (typeof bootstrapCloudSyncAfterGameInit === "function") bootstrapCloudSyncAfterGameInit();
   if (typeof scheduleSocialSnapshotSync === "function") scheduleSocialSnapshotSync(500);
 
@@ -507,14 +517,18 @@ function migrateState(rawState, fallback = createDefaultState()) {
   return migrated;
 }
 
-function saveGame() {
-  if (state) state.lastSavedAt = new Date().toISOString();
+function saveGame(options = {}) {
+  const { markDirty = true, touchTimestamp = true } = options;
+  if (state && touchTimestamp) state.lastSavedAt = new Date().toISOString();
   if (pendingSaveTimer) {
     window.clearTimeout(pendingSaveTimer);
     pendingSaveTimer = null;
   }
   try {
     localStorage.setItem(getGameStorageKey(), JSON.stringify(state));
+    if (markDirty && typeof markLocalSaveDirty === "function") {
+      markLocalSaveDirty("game", state?.lastSavedAt || new Date().toISOString());
+    }
     if (typeof scheduleCloudSync === "function") scheduleCloudSync();
     if (typeof scheduleSocialSnapshotSync === "function") scheduleSocialSnapshotSync();
     return true;
@@ -529,12 +543,10 @@ function saveGame() {
   }
 }
 
-function scheduleSaveGame(delay = 180) {
-  window.clearTimeout(pendingSaveTimer);
-  pendingSaveTimer = window.setTimeout(() => {
-    pendingSaveTimer = null;
-    saveGame();
-  }, delay);
+function scheduleSaveGame(_delay = 180) {
+  // Alterações do usuário são persistidas localmente imediatamente.
+  // A nuvem continua com debounce próprio em scheduleCloudSync().
+  saveGame();
 }
 
 function flushScheduledSave() {

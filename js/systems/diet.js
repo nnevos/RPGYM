@@ -39,6 +39,7 @@ function saveDietState() {
     const currentDiet = loadDietState();
     currentDiet.updatedAt = new Date().toISOString();
     localStorage.setItem(getScopedStorageKey(DIET_STORAGE_KEY), JSON.stringify(currentDiet));
+    if (typeof markLocalSaveDirty === "function") markLocalSaveDirty("diet", currentDiet.updatedAt);
     if (state) { rebuildStatsFromSources(); saveGame(); }
   }
   catch (error) { console.warn("Não foi possível salvar a dieta localmente.", error); }
