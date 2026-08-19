@@ -52,6 +52,7 @@ function getLocalSaveSnapshot() {
 
 function prepareCloudBootstrapSnapshot() {
   cloudBootLocalSnapshot = getLocalSaveSnapshot();
+  createVersionUpgradeBackup(cloudBootLocalSnapshot);
   cloudInitialReconcileComplete = false;
 }
 
@@ -59,6 +60,232 @@ function localSnapshotTimestamp(snapshot) {
   const values = [snapshot?.game?.lastSavedAt, snapshot?.diet?.updatedAt]
     .map((value) => value ? new Date(value).getTime() : 0).filter(Number.isFinite);
   return values.length ? Math.max(...values) : 0;
+}
+
+function stateTimestamp(value, fallback = 0) {
+  const parsed = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function gameSnapshotTimestamp(game, fallback = 0) {
+  return stateTimestamp(game?.lastSavedAt, fallback);
+}
+
+function dietSnapshotTimestamp(diet, fallback = 0) {
+  return stateTimestamp(diet?.updatedAt, fallback);
+}
+
+function preservationKey(item) {
+  if (!item || typeof item !== "object") return JSON.stringify(item);
+  return String(
+    item.id ||
+    item.sessionId ||
+    item.activityId && item.timestamp ? `${item.activityId}:${item.timestamp}` :
+    item.timestamp ||
+    item.createdAt ||
+    JSON.stringify(item)
+  );
+}
+
+function mergeUniqueRecords(preferred = [], fallback = []) {
+  const result = [];
+  const seen = new Set();
+  [...(Array.isArray(preferred) ? preferred : []), ...(Array.isArray(fallback) ? fallback : [])].forEach((item) => {
+    const key = preservationKey(item);
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(item);
+  });
+  return result;
+}
+
+function mergeWorkoutState(preferred = {}, fallback = {}) {
+  return {
+    ...(fallback && typeof fallback === "object" ? fallback : {}),
+    ...(preferred && typeof preferred === "object" ? preferred : {}),
+    active: preferred?.active || fallback?.active || null,
+    routines: mergeUniqueRecords(preferred?.routines, fallback?.routines),
+    sessions: mergeUniqueRecords(preferred?.sessions, fallback?.sessions)
+  };
+}
+
+function mergeGameForUpgrade(preferred, fallback) {
+  if (!preferred || typeof preferred !== "object") return fallback || null;
+  if (!fallback || typeof fallback !== "object") return preferred;
+  const merged = {
+    ...fallback,
+    ...preferred,
+    history: mergeUniqueRecords(preferred.history, fallback.history),
+    workouts: mergeWorkoutState(preferred.workouts, fallback.workouts),
+    buffs: mergeUniqueRecords(preferred.buffs, fallback.buffs),
+    achievements: {
+      ...(fallback.achievements || {}),
+      ...(preferred.achievements || {}),
+      unlocked: Array.from(new Set([
+        ...(Array.isArray(preferred.achievements?.unlocked) ? preferred.achievements.unlocked : []),
+        ...(Array.isArray(fallback.achievements?.unlocked) ? fallback.achievements.unlocked : [])
+      ]))
+    }
+  };
+
+  const roadmapKeys = new Set([
+    ...Object.keys(fallback.roadmaps || {}),
+    ...Object.keys(preferred.roadmaps || {})
+  ]);
+  merged.roadmaps = { ...(fallback.roadmaps || {}), ...(preferred.roadmaps || {}) };
+  roadmapKeys.forEach((key) => {
+    merged.roadmaps[key] = {
+      ...(fallback.roadmaps?.[key] || {}),
+      ...(preferred.roadmaps?.[key] || {}),
+      claimedChapters: Array.from(new Set([
+        ...(Array.isArray(preferred.roadmaps?.[key]?.claimedChapters) ? preferred.roadmaps[key].claimedChapters : []),
+        ...(Array.isArray(fallback.roadmaps?.[key]?.claimedChapters) ? fallback.roadmaps[key].claimedChapters : [])
+      ]))
+    };
+  });
+
+  if (preferred.stats || fallback.stats) {
+    merged.stats = {
+      ...(fallback.stats || {}),
+      ...(preferred.stats || {}),
+      missionClaims: mergeUniqueRecords(preferred.stats?.missionClaims, fallback.stats?.missionClaims)
+    };
+  }
+  return merged;
+}
+
+function mergeDietDay(preferred = {}, fallback = {}) {
+  const mealKeys = new Set([
+    ...Object.keys(fallback?.meals || {}),
+    ...Object.keys(preferred?.meals || {})
+  ]);
+  const meals = {};
+  mealKeys.forEach((mealKey) => {
+    meals[mealKey] = mergeUniqueRecords(preferred?.meals?.[mealKey], fallback?.meals?.[mealKey]);
+  });
+  return {
+    ...fallback,
+    ...preferred,
+    finalized: Boolean(preferred?.finalized || fallback?.finalized),
+    meals
+  };
+}
+
+function mergeDietForUpgrade(preferred, fallback) {
+  if (!preferred || typeof preferred !== "object") return fallback || null;
+  if (!fallback || typeof fallback !== "object") return preferred;
+  const merged = {
+    ...fallback,
+    ...preferred,
+    recentFoods: mergeUniqueRecords(preferred.recentFoods, fallback.recentFoods),
+    favoriteFoodIds: Array.from(new Set([
+      ...(Array.isArray(preferred.favoriteFoodIds) ? preferred.favoriteFoodIds : []),
+      ...(Array.isArray(fallback.favoriteFoodIds) ? fallback.favoriteFoodIds : [])
+    ])),
+    days: { ...(fallback.days || {}) }
+  };
+  Object.keys(preferred.days || {}).forEach((dateKey) => {
+    merged.days[dateKey] = mergeDietDay(preferred.days[dateKey], fallback.days?.[dateKey]);
+  });
+  return merged;
+}
+
+function isVersionUpgradePair(localValue, cloudValue) {
+  const localVersion = String(localValue?.version || "");
+  const cloudVersion = String(cloudValue?.version || "");
+  return Boolean(
+    (localVersion && localVersion !== APP_VERSION) ||
+    (cloudVersion && cloudVersion !== APP_VERSION) ||
+    (localVersion && cloudVersion && localVersion !== cloudVersion)
+  );
+}
+
+function createVersionUpgradeBackup(snapshot) {
+  const userId = authSession?.user?.id || "local";
+  if (!snapshot?.game && !snapshot?.diet) return;
+  const previousVersion = String(snapshot?.game?.version || snapshot?.diet?.version || "unknown");
+  if (previousVersion === APP_VERSION) return;
+  const key = `rpgym:upgrade-backup:${userId}:${previousVersion}:to:${APP_VERSION}`;
+  try {
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, JSON.stringify({
+        createdAt: new Date().toISOString(),
+        fromVersion: previousVersion,
+        toVersion: APP_VERSION,
+        game: snapshot.game || null,
+        diet: snapshot.diet || null
+      }));
+    }
+  } catch (error) {
+    console.warn("Não foi possível criar o backup pré-atualização.", error);
+  }
+}
+
+function chooseDomain(localValue, cloudValue, localTs, cloudTs) {
+  if (!cloudValue && localValue) return { value: localValue, source: "local" };
+  if (!localValue && cloudValue) return { value: cloudValue, source: "cloud" };
+  if (!localValue && !cloudValue) return { value: null, source: "none" };
+  if (localTs > cloudTs + CLOUD_TIME_TOLERANCE_MS) return { value: localValue, source: "local" };
+  return { value: cloudValue, source: "cloud" };
+}
+
+function reconcileSaveDomains(local, data) {
+  const serverTs = cloudTimestamp(data);
+  const gameChoice = chooseDomain(
+    local?.game || null,
+    data?.game_state || null,
+    gameSnapshotTimestamp(local?.game),
+    gameSnapshotTimestamp(data?.game_state, serverTs)
+  );
+  const dietChoice = chooseDomain(
+    local?.diet || null,
+    data?.diet_state || null,
+    dietSnapshotTimestamp(local?.diet),
+    dietSnapshotTimestamp(data?.diet_state, serverTs)
+  );
+
+  const gameOther = gameChoice.source === "cloud" ? local?.game : data?.game_state;
+  const dietOther = dietChoice.source === "cloud" ? local?.diet : data?.diet_state;
+
+  const game = isVersionUpgradePair(local?.game, data?.game_state)
+    ? { ...gameChoice, value: mergeGameForUpgrade(gameChoice.value, gameOther), mergedForUpgrade: true }
+    : gameChoice;
+  const diet = isVersionUpgradePair(local?.diet, data?.diet_state)
+    ? { ...dietChoice, value: mergeDietForUpgrade(dietChoice.value, dietOther), mergedForUpgrade: true }
+    : dietChoice;
+
+  return { game, diet };
+}
+
+function backupLocalBeforeReconcile() {
+  const userId = authSession?.user?.id || "local";
+  try {
+    const snapshot = getLocalSaveSnapshot();
+    if (!snapshot.game && !snapshot.diet) return;
+    localStorage.setItem(`rpgym:pre-reconcile-backup:${userId}`, JSON.stringify({
+      createdAt: new Date().toISOString(),
+      game: snapshot.game,
+      diet: snapshot.diet
+    }));
+  } catch (error) {
+    console.warn("Não foi possível criar backup local antes da sincronização.", error);
+  }
+}
+
+function persistReconciledSnapshot(reconciled) {
+  try {
+    backupLocalBeforeReconcile();
+    if (reconciled?.game?.value && typeof reconciled.game.value === "object") {
+      localStorage.setItem(getGameStorageKey(), JSON.stringify(reconciled.game.value));
+    }
+    if (reconciled?.diet?.value && typeof reconciled.diet.value === "object") {
+      localStorage.setItem(getScopedStorageKey(DIET_STORAGE_KEY), JSON.stringify(reconciled.diet.value));
+    }
+    return true;
+  } catch (error) {
+    console.warn("Não foi possível persistir o estado reconciliado.", error);
+    return false;
+  }
 }
 
 function cloudTimestamp(data) {
@@ -237,38 +464,42 @@ async function bootstrapCloudSyncAfterGameInit() {
     }
 
     cloudLastServerUpdatedAt = data.updated_at || null;
+    const reconciled = reconcileSaveDomains(local, data);
+    const appliedKey = `${data.updated_at || "none"}|g:${reconciled.game.source}|d:${reconciled.diet.source}`;
+    const alreadyApplied = meta.lastAppliedReconcileKey === appliedKey;
 
-    // Nuvem vence em empate ou quando é mais recente. O reload só ocorre uma vez
-    // para a mesma versão de nuvem, evitando ciclos de inicialização.
-    if (cloudTs + CLOUD_TIME_TOLERANCE_MS >= localTs) {
-      const alreadyApplied = meta.lastAppliedCloudAt === data.updated_at;
-      writeCloudMeta({
-        lastSyncedAt: data.updated_at,
-        lastServerUpdatedAt: data.updated_at,
-        resolution: "cloud-auto",
-        lastAppliedCloudAt: data.updated_at
-      }, userId);
+    // Jogo e Dieta são reconciliados separadamente. Uma área mais nova nunca
+    // apaga silenciosamente a outra só porque o registro da nuvem é único.
+    const cloudWonAny = reconciled.game.source === "cloud" || reconciled.diet.source === "cloud";
+    const localWonAny = reconciled.game.source === "local" || reconciled.diet.source === "local" || reconciled.game.mergedForUpgrade || reconciled.diet.mergedForUpgrade;
 
-      if (!alreadyApplied && persistCloudSnapshotLocally(data)) {
-        cloudInitialReconcileComplete = true;
-        cloudBootLocalSnapshot = null;
-        updateCloudStatusLabel("synced");
-        window.location.reload();
-        return;
-      }
+    writeCloudMeta({
+      lastSyncedAt: data.updated_at,
+      lastServerUpdatedAt: data.updated_at,
+      resolution: `game-${reconciled.game.source}-diet-${reconciled.diet.source}`,
+      lastAppliedReconcileKey: appliedKey
+    }, userId);
 
+    if (cloudWonAny && !alreadyApplied && persistReconciledSnapshot(reconciled)) {
       cloudInitialReconcileComplete = true;
       cloudBootLocalSnapshot = null;
-      cloudDirtyWhileOffline = false;
       updateCloudStatusLabel("synced");
+      window.location.reload();
       return;
     }
 
-    // O estado local já era mais novo antes do boot. Só agora liberamos upload.
     cloudInitialReconcileComplete = true;
     cloudBootLocalSnapshot = null;
-    writeCloudMeta({ resolution: "local-newer-auto" }, userId);
-    await pushCloudSaveNow();
+    cloudDirtyWhileOffline = false;
+
+    // Se qualquer domínio local era realmente mais recente, publica o pacote
+    // reconciliado depois que a comparação terminou.
+    if (localWonAny) {
+      await pushCloudSaveNow();
+      return;
+    }
+
+    updateCloudStatusLabel("synced");
   } catch (error) {
     console.warn("Não foi possível concluir a reconciliação inicial com a nuvem.", error);
     cloudInitialReconcileComplete = true;
@@ -298,22 +529,25 @@ async function reconcileCloudAfterReconnect() {
         return true;
       }
 
-      if (localTs > cloudTs + CLOUD_TIME_TOLERANCE_MS) {
-        // Este dispositivo tem a alteração mais recente: publica assim que possível.
-        return await pushCloudSaveNow();
-      }
+      const reconciled = reconcileSaveDomains(local, data);
+      const cloudWonAny = reconciled.game.source === "cloud" || reconciled.diet.source === "cloud";
+      const localWonAny = reconciled.game.source === "local" || reconciled.diet.source === "local" || reconciled.game.mergedForUpgrade || reconciled.diet.mergedForUpgrade;
 
-      // A nuvem é mais nova ou equivalente. Atualiza o cache local automaticamente.
       cloudLastServerUpdatedAt = data.updated_at || null;
-      writeCloudMeta({ lastSyncedAt: data.updated_at, lastServerUpdatedAt: data.updated_at, resolution: "cloud-reconnect-auto" }, userId);
+      writeCloudMeta({
+        lastSyncedAt: data.updated_at,
+        lastServerUpdatedAt: data.updated_at,
+        resolution: `reconnect-game-${reconciled.game.source}-diet-${reconciled.diet.source}`
+      }, userId);
       cloudDirtyWhileOffline = false;
 
-      if (cloudTs > localTs + CLOUD_TIME_TOLERANCE_MS && persistCloudSnapshotLocally(data)) {
+      if (cloudWonAny && persistReconciledSnapshot(reconciled)) {
         updateCloudStatusLabel("synced");
-        // Recarrega uma vez para reconstruir todos os sistemas a partir do estado vencedor.
         window.location.reload();
         return true;
       }
+
+      if (localWonAny) return await pushCloudSaveNow();
 
       updateCloudStatusLabel("synced");
       return true;

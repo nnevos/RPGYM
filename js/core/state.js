@@ -386,6 +386,22 @@ function loadGame() {
     }
 
     const parsed = JSON.parse(stored);
+    if (parsed && typeof parsed === "object" && String(parsed.version || "") !== APP_VERSION) {
+      try {
+        const userId = window.RPG_GYM_AUTH_USER_ID || "local";
+        const backupKey = `rpgym:game-upgrade-backup:${userId}:${String(parsed.version || "unknown")}:to:${APP_VERSION}`;
+        if (!localStorage.getItem(backupKey)) {
+          localStorage.setItem(backupKey, JSON.stringify({
+            createdAt: new Date().toISOString(),
+            fromVersion: parsed.version || null,
+            toVersion: APP_VERSION,
+            game: parsed
+          }));
+        }
+      } catch (backupError) {
+        console.warn("Não foi possível criar backup do progresso antes da migração.", backupError);
+      }
+    }
     return migrateState(parsed, fallback);
   } catch (error) {
     console.warn("Não foi possível carregar o progresso salvo.", error);

@@ -5,6 +5,23 @@ function loadDietState() {
   try {
     const cloudDiet = typeof consumePendingCloudDiet === "function" ? consumePendingCloudDiet() : null;
     const parsed = cloudDiet || JSON.parse(localStorage.getItem(getScopedStorageKey(DIET_STORAGE_KEY)) || claimLegacyStorage(DIET_STORAGE_KEY, getScopedStorageKey(DIET_STORAGE_KEY)) || "null");
+    if (parsed && typeof parsed === "object") {
+      try {
+        const userId = window.RPG_GYM_AUTH_USER_ID || "local";
+        const backupVersion = String(parsed.version || "diet-v2");
+        const backupKey = `rpgym:diet-upgrade-backup:${userId}:${backupVersion}:to:${APP_VERSION}`;
+        if (!localStorage.getItem(backupKey)) {
+          localStorage.setItem(backupKey, JSON.stringify({
+            createdAt: new Date().toISOString(),
+            fromVersion: parsed.version || null,
+            toVersion: APP_VERSION,
+            diet: parsed
+          }));
+        }
+      } catch (backupError) {
+        console.warn("Não foi possível criar backup da dieta antes da migração.", backupError);
+      }
+    }
     dietState = parsed && typeof parsed === "object" ? parsed : { days: {} };
   } catch (error) {
     dietState = { days: {} };
