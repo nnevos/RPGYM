@@ -19,6 +19,7 @@
 <script defer src="js/config/cardio-data.js"></script>
 <script defer src="js/core/runtime.js"></script>
 <script defer src="js/core/helpers.js"></script>
+<script defer src="js/core/audit.js"></script>
 <script defer src="js/core/state.js"></script>
 <script defer src="js/core/missions.js"></script>
 <script defer src="js/core/progression.js"></script>
@@ -383,7 +384,7 @@
   <div class="profile-reference-page" id="profileMainPanel">
     <header class="profile-reference-header">
       <h2 id="characterHeading">Meu Perfil</h2>
-      <button aria-controls="profileSettingsOverlay" aria-haspopup="dialog" class="profile-icon-button" id="profileSettingsButton" type="button" aria-label="Configurações do perfil">⚙</button>
+      <div class="profile-header-actions"><button class="profile-icon-button" data-help="profile" type="button" aria-label="Como funciona o perfil">?</button><button aria-controls="profileSettingsOverlay" aria-haspopup="dialog" class="profile-icon-button" id="profileSettingsButton" type="button" aria-label="Configurações do perfil">⚙</button></div>
     </header>
 
     <section class="profile-identity-card" aria-label="Identidade do jogador">
@@ -441,7 +442,7 @@
     <section class="attribute-roadmap-section">
       <div class="profile-section-title-row">
         <div><h3>Roadmap</h3><p>Objetivos permanentes • progresso da conta</p></div>
-        <small id="attributeRoadmapCount">0/2 capítulos</small>
+        <div class="roadmap-title-actions"><button class="mini-help-button" data-roadmap-help type="button" aria-label="Como funciona o roadmap">?</button><small id="attributeRoadmapCount">0/10 capítulos</small></div>
       </div>
       <div class="attribute-roadmap-list" id="attributeRoadmapList"></div>
     </section>
@@ -456,6 +457,19 @@
 </section>
 <nav aria-label="Navegação principal mobile" class="mobile-nav"><button class="mobile-nav-item is-active" data-view="social" type="button"><span aria-hidden="true">◎</span><small>Social</small></button><button class="mobile-nav-item" data-view="training" type="button"><span aria-hidden="true">⚔</span><small>Treino</small></button><button class="mobile-nav-item" data-view="cardio" type="button"><span aria-hidden="true">◉</span><small>Cardio</small></button><button class="mobile-nav-item" data-view="diet" type="button"><span aria-hidden="true">◔</span><small>Dieta</small></button><button class="mobile-nav-item" data-view="character" type="button"><span aria-hidden="true">◈</span><small>Perfil</small></button></nav>
 </div>
+<div class="onboarding-overlay" hidden id="onboardingOverlay">
+<section class="onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+<header><div><p class="eyebrow">RPG GYM • v0.4</p><h2 id="onboardingTitle">Sua rotina vira progressão</h2></div><button id="skipOnboarding" type="button" aria-label="Fechar guia">×</button></header>
+<div class="onboarding-intro"><strong>Treine na vida real. Evolua seu personagem.</strong><p>O RPG GYM transforma musculação, cardio, alimentação e consistência em XP, níveis, roadmaps e classes.</p></div>
+<div class="onboarding-steps">
+<article><span>1</span><div><strong>Registre atividades reais</strong><p>Treino, cardio e dieta alimentam atributos diferentes. Algumas atividades podem evoluir dois atributos.</p></div></article>
+<article><span>2</span><div><strong>Ganhe XP e melhore performance</strong><p>Fazer mais continua valendo a pena. PRs e melhora real ajudam; spam repetitivo perde eficiência.</p></div></article>
+<article><span>3</span><div><strong>Complete missões</strong><p>Diárias e semanais giram offline e dão objetivos extras, sem substituir a atividade real.</p></div></article>
+<article><span>4</span><div><strong>Avance nos roadmaps</strong><p>Cada atributo possui uma rota até o nível 50. Nível + objetivos desbloqueiam marcos e evoluções de classe.</p></div></article>
+</div>
+<p class="onboarding-note">Procure o botão <b>?</b> nas telas quando quiser uma explicação curta daquela área.</p>
+<button class="primary-button" id="finishOnboarding" type="button">Começar jornada</button>
+</section></div>
 <div class="help-overlay" hidden id="helpOverlay">
 <section class="help-modal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
 <header><div><p class="eyebrow">Guia rápido</p><h2 id="helpModalTitle">Como funciona</h2></div><button id="closeHelpOverlay" aria-label="Fechar tutorial" type="button">×</button></header>
@@ -510,6 +524,11 @@
 </label>
 <button class="primary-button field-span-two" type="submit">Salvar alterações</button>
 </form>
+<div class="profile-dev-tools profile-guide-tools"><div><strong>Guia do RPG GYM</strong><p>Reveja como XP, atributos, roadmaps, classes e missões funcionam.</p></div><button class="secondary-button" data-open-guide type="button">Abrir guia</button></div>
+<div class="profile-dev-tools">
+<div><strong>Diagnóstico de balanceamento</strong><p>Ferramenta local para conferir de onde o XP está vindo durante os testes.</p></div>
+<button class="secondary-button" id="openBalanceAudit" type="button">Abrir auditoria</button>
+</div>
 <div class="danger-zone profile-settings-danger">
 <div>
 <strong>Resetar progresso</strong>
@@ -517,6 +536,15 @@
 </div>
 <button class="danger-button" id="resetProgressButton" type="button">Resetar</button>
 </div>
+</section>
+</div>
+<div class="balance-audit-overlay" hidden id="balanceAuditOverlay">
+<section class="balance-audit-modal" role="dialog" aria-modal="true" aria-labelledby="balanceAuditTitle">
+<header class="balance-audit-header"><div><p class="eyebrow">Ferramenta de desenvolvimento</p><h2 id="balanceAuditTitle">Auditoria de XP</h2></div><button id="closeBalanceAudit" type="button" aria-label="Fechar">×</button></header>
+<div class="balance-audit-summary"><div><small>XP auditado</small><strong id="balanceAuditTotal">0 XP</strong></div><div><small>Eventos</small><strong id="balanceAuditCount">0 eventos</strong></div></div>
+<div class="balance-audit-attributes" id="balanceAuditAttributes"></div>
+<div class="balance-audit-actions"><button id="exportBalanceAudit" type="button">Exportar JSON</button><button id="clearBalanceAudit" class="danger-button" type="button">Limpar auditoria</button></div>
+<div class="balance-audit-list" id="balanceAuditList"></div>
 </section>
 </div>
 <div class="workout-modal-overlay" hidden="" id="exercisePickerOverlay">

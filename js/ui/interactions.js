@@ -23,7 +23,7 @@ const HELP_CONTENT = {
   },
   cardio: {
     title: "Como registrar cardio",
-    html: `<ol><li>Escolha cardio contínuo ou corrida/velocidade.</li><li>Inicie o cronômetro.</li><li>Pause quando necessário.</li><li>Finalize e confirme o registro.</li></ol><p class="help-tip">Cardio contínuo evolui Constituição; corrida/velocidade evolui Agilidade.</p>`
+    html: `<ol><li>Escolha a modalidade e inicie o cronômetro.</li><li>Pause quando necessário.</li><li>Finalize e informe os dados pedidos para aquela modalidade.</li><li>Confirme para registrar XP e performance.</li></ol><p class="help-tip">Cardio usa afinidades: endurance costuma alimentar Constituição, enquanto velocidade, ritmo ou potência podem gerar uma parcela menor de XP em Agilidade ou Força. O XP secundário não passa do limite configurado.</p>`
   },
   diet: {
     title: "Como usar a Dieta",
@@ -31,7 +31,15 @@ const HELP_CONTENT = {
   },
   profile: {
     title: "Perfil e atributos",
-    html: `<p>O radar resume os seis atributos do RPG GYM.</p><ul><li>Quanto mais distante do centro, maior o nível.</li><li>Cada atributo possui XP e progressão próprios.</li><li>Marcos desbloqueiam classes, títulos e afinidade.</li><li>Configurações pessoais ficam no botão “Configurações”.</li></ul>`
+    html: `<p>O radar resume os seis atributos do RPG GYM.</p><ul><li>Cada atributo possui XP e nível próprios.</li><li>Toque em um atributo para abrir sua rota permanente.</li><li>Roadmaps exigem nível + objetivos e liberam marcos e evoluções de classe.</li><li>Missões rotativas são bônus; a maior parte do progresso vem das atividades reais.</li></ul>`
+  },
+  roadmap: {
+    title: "Roadmap e classes",
+    html: `<p>O roadmap é a campanha permanente de cada atributo.</p><ul><li>Há capítulos nos níveis 5, 10, 15... até 50.</li><li>Os objetivos são cumulativos: seu progresso antigo continua contando.</li><li>Nos níveis múltiplos de 10, concluir e resgatar o capítulo evolui a classe.</li><li>Chegar ao nível sozinho não libera a classe: os objetivos também precisam estar completos.</li></ul><p class="help-tip">Missões diárias e semanais renovam. Roadmaps não renovam.</p>`
+  },
+  xp: {
+    title: "XP e progressão",
+    html: `<p>Os níveis iniciais avançam mais rápido e os níveis altos exigem mais constância.</p><ul><li>Atividade real é a principal fonte de XP.</li><li>Fazer mais continua dando XP; repetições excessivas no mesmo dia têm retorno decrescente.</li><li>Musculação e cardio são categorias independentes.</li><li>PRs, missões e roadmaps complementam o progresso.</li></ul>`
   }
 };
 
@@ -42,6 +50,10 @@ function openHelp(key) {
   setText("helpModalTitle", data.title);
   const content = document.getElementById("helpModalContent");
   if (content) content.innerHTML = data.html;
+  state.tutorial ||= { welcomeSeen: false, dismissed: {}, viewedHelp: {} };
+  state.tutorial.viewedHelp ||= {};
+  state.tutorial.viewedHelp[key] = true;
+  saveGame();
   overlay.hidden = false;
   document.body.style.overflow = "hidden";
 }
@@ -52,8 +64,33 @@ function closeHelp() {
   overlay.hidden = true;
   document.body.style.overflow = "";
 }
+function openOnboarding(force = false) {
+  const overlay = document.getElementById("onboardingOverlay");
+  if (!overlay) return;
+  state.tutorial ||= { welcomeSeen: false, dismissed: {}, viewedHelp: {} };
+  if (!force && state.tutorial.welcomeSeen) return;
+  overlay.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+function closeOnboarding() {
+  const overlay = document.getElementById("onboardingOverlay");
+  if (!overlay) return;
+  state.tutorial ||= { welcomeSeen: false, dismissed: {}, viewedHelp: {} };
+  state.tutorial.welcomeSeen = true;
+  saveGame();
+  overlay.hidden = true;
+  document.body.style.overflow = "";
+}
+
 function bindEvents() {
   document.addEventListener("click", (event) => {
+    const guideButton = event.target.closest("[data-open-guide]");
+    if (guideButton) { openOnboarding(true); return; }
+
+    const roadmapHelp = event.target.closest("[data-roadmap-help]");
+    if (roadmapHelp) { openHelp("roadmap"); return; }
+
     const navigationButton = event.target.closest("[data-view]");
     if (navigationButton) {
       setActiveView(navigationButton.dataset.view);
@@ -246,6 +283,10 @@ function bindEvents() {
   document.getElementById("dietDeleteFood")?.addEventListener("click", deleteDietItem);
   document.getElementById("closeFoodPicker")?.addEventListener("click", closeFoodPicker);
   document.getElementById("foodSearch")?.addEventListener("input", renderFoodSearch);
+  document.getElementById("finishOnboarding")?.addEventListener("click", closeOnboarding);
+  document.getElementById("skipOnboarding")?.addEventListener("click", closeOnboarding);
+  document.getElementById("onboardingOverlay")?.addEventListener("click", (event) => { if (event.target.id === "onboardingOverlay") closeOnboarding(); });
+
   document.querySelectorAll("[data-help]").forEach((button) => {
     button.addEventListener("click", () => openHelp(button.dataset.help));
   });

@@ -75,60 +75,60 @@ const ROADMAP_DEFINITIONS = Object.freeze({
   agility: [
     { id: "agility_5", unlockLevel: 5, title: "Passos do Ninja", rewardLabel: "Marco de Agilidade I", objectives: [
       { id: "days", label: "Registre Agilidade em 3 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 3 },
-      { id: "sessions", label: "Complete 3 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 3 },
+      { id: "sessions", label: "Complete 2 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 2 },
       { id: "activities", label: "Registre 5 atividades de Agilidade", metric: { type: "attributeActivityCount", attribute: "agility" }, target: 5 }
     ]},
     { id: "agility_10", unlockLevel: 10, title: "Provação do Ninja", rewardLabel: "Classe Ninja", objectives: [
       { id: "days", label: "Registre Agilidade em 10 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 10 },
-      { id: "sessions", label: "Complete 12 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 12 },
-      { id: "minutes", label: "Acumule 180 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 180 }
+      { id: "sessions", label: "Complete 6 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 6 },
+      { id: "minutes", label: "Acumule 100 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 100 }
     ]},
     { id: "agility_15", unlockLevel: 15, title: "Ritmo e Precisão", rewardLabel: "Marco de Agilidade II", objectives: [
       { id: "days", label: "Registre Agilidade em 20 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 20 },
-      { id: "sessions", label: "Complete 25 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 25 },
-      { id: "minutes", label: "Acumule 400 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 400 },
+      { id: "sessions", label: "Complete 12 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 12 },
+      { id: "minutes", label: "Acumule 220 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 220 },
       { id: "activities", label: "Registre 35 atividades de Agilidade", metric: { type: "attributeActivityCount", attribute: "agility" }, target: 35 }
     ]},
     { id: "agility_20", unlockLevel: 20, title: "Ascensão do Ninja", rewardLabel: "Ninja II", objectives: [
       { id: "days", label: "Registre Agilidade em 35 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 35 },
-      { id: "sessions", label: "Complete 45 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 45 },
-      { id: "minutes", label: "Acumule 750 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 750 },
+      { id: "sessions", label: "Complete 20 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 20 },
+      { id: "minutes", label: "Acumule 400 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 400 },
       { id: "activities", label: "Registre 60 atividades de Agilidade", metric: { type: "attributeActivityCount", attribute: "agility" }, target: 60 }
     ]},
     { id: "agility_25", unlockLevel: 25, title: "Movimento Instintivo", rewardLabel: "Marco de Agilidade III", objectives: [
       { id: "days", label: "Registre Agilidade em 55 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 55 },
-      { id: "sessions", label: "Complete 70 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 70 },
-      { id: "minutes", label: "Acumule 1.200 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 1200 },
+      { id: "sessions", label: "Complete 30 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 30 },
+      { id: "minutes", label: "Acumule 650 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 650 },
       { id: "activities", label: "Registre 90 atividades de Agilidade", metric: { type: "attributeActivityCount", attribute: "agility" }, target: 90 }
     ]},
     { id: "agility_30", unlockLevel: 30, title: "Dominio do Ninja", rewardLabel: "Ninja III", objectives: [
       { id: "days", label: "Registre Agilidade em 80 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 80 },
-      { id: "sessions", label: "Complete 100 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 100 },
-      { id: "minutes", label: "Acumule 1.800 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 1800 },
+      { id: "sessions", label: "Complete 42 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 42 },
+      { id: "minutes", label: "Acumule 950 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 950 },
       { id: "activities", label: "Registre 125 atividades de Agilidade", metric: { type: "attributeActivityCount", attribute: "agility" }, target: 125 }
     ]},
     { id: "agility_35", unlockLevel: 35, title: "Reflexos Afiados", rewardLabel: "Marco de Agilidade IV", objectives: [
       { id: "days", label: "Registre Agilidade em 110 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 110 },
-      { id: "sessions", label: "Complete 135 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 135 },
-      { id: "minutes", label: "Acumule 2.550 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 2550 },
+      { id: "sessions", label: "Complete 56 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 56 },
+      { id: "minutes", label: "Acumule 1300 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 1300 },
       { id: "activities", label: "Registre 165 atividades de Agilidade", metric: { type: "attributeActivityCount", attribute: "agility" }, target: 165 }
     ]},
     { id: "agility_40", unlockLevel: 40, title: "Ninja Veterano", rewardLabel: "Ninja IV", objectives: [
       { id: "days", label: "Registre Agilidade em 145 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 145 },
-      { id: "sessions", label: "Complete 175 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 175 },
-      { id: "minutes", label: "Acumule 3.400 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 3400 },
+      { id: "sessions", label: "Complete 72 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 72 },
+      { id: "minutes", label: "Acumule 1750 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 1750 },
       { id: "activities", label: "Registre 210 atividades de Agilidade", metric: { type: "attributeActivityCount", attribute: "agility" }, target: 210 }
     ]},
     { id: "agility_45", unlockLevel: 45, title: "Passos Lendarios", rewardLabel: "Marco de Agilidade V", objectives: [
       { id: "days", label: "Registre Agilidade em 185 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 185 },
-      { id: "sessions", label: "Complete 220 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 220 },
-      { id: "minutes", label: "Acumule 4.400 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 4400 },
+      { id: "sessions", label: "Complete 90 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 90 },
+      { id: "minutes", label: "Acumule 2250 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 2250 },
       { id: "activities", label: "Registre 260 atividades de Agilidade", metric: { type: "attributeActivityCount", attribute: "agility" }, target: 260 }
     ]},
     { id: "agility_50", unlockLevel: 50, title: "Sombra Perfeita", rewardLabel: "Ninja Mestre + Titulo Sombra Veloz", objectives: [
       { id: "days", label: "Registre Agilidade em 230 dias diferentes", metric: { type: "attributeActiveDays", attribute: "agility" }, target: 230 },
-      { id: "sessions", label: "Complete 270 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 270 },
-      { id: "minutes", label: "Acumule 5.600 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 5600 },
+      { id: "sessions", label: "Complete 110 sessões de corrida ou corda", metric: { type: "cardioTypeSessions", types: ["outdoor_run", "jump_rope"] }, target: 110 },
+      { id: "minutes", label: "Acumule 2800 min em corrida ou corda", metric: { type: "cardioTypeMinutes", types: ["outdoor_run", "jump_rope"] }, target: 2800 },
       { id: "activities", label: "Registre 320 atividades de Agilidade", metric: { type: "attributeActivityCount", attribute: "agility" }, target: 320 }
     ]}
   ],

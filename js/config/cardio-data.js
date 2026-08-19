@@ -43,7 +43,7 @@ const CARDIO_TYPES = {
   },
   stair_climber: {
     label: "Escada / Stair climber", icon: "▤", attribute: "constitution",
-    affinities: { primary: "constitution", secondary: { attribute: "strength", ratio: 0.15, performanceTarget: true, eligibility: { minMinutes: 10 } } },
+    affinities: { primary: "constitution", secondary: { attribute: "force", ratio: 0.15, performanceTarget: true, eligibility: { minMinutes: 10 } } },
     requiredLabel: "Andares • nível", hint: "Endurance gera Constituição; uma sessão consistente também pode gerar uma parcela menor de Força pelas pernas.", fields: [
       { key: "floors", label: "Andares", unit: "andares", type: "number", min: 0, step: 1, required: false },
       { key: "resistance", label: "Nível médio", unit: "nível", type: "number", min: 0, step: 1, required: false }
@@ -51,7 +51,7 @@ const CARDIO_TYPES = {
   },
   rowing: {
     label: "Remo ergométrico", icon: "≈", attribute: "constitution",
-    affinities: { primary: "constitution", secondary: { attribute: "strength", ratio: 0.20, performanceTarget: true, eligibility: { minDistanceMeters: 500 } } },
+    affinities: { primary: "constitution", secondary: { attribute: "force", ratio: 0.20, performanceTarget: true, eligibility: { minDistanceMeters: 500 } } },
     requiredLabel: "Distância • ritmo /500 m", hint: "Endurance gera Constituição; ritmo e esforço do remo podem gerar uma parcela menor de Força.", fields: [
       { key: "distanceMeters", label: "Distância", unit: "m", type: "number", min: 0, step: 10, required: true }
     ]

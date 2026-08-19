@@ -1,4 +1,4 @@
-# RPG GYM v0.3.0
+# RPG GYM v0.4.0
 
 Esta versao reorganiza o projeto para separar dados, regras, sistemas e interface sem usar frameworks ou ES modules.
 Isso permite abrir `index.html` diretamente pelo navegador (file://) e ainda manter os arquivos editaveis.
@@ -65,3 +65,18 @@ Os valores continuam centralizados em `js/config/balance-config.js`.
 ## Cardio com múltiplos atributos (v0.3.4)
 
 O cardio agora usa afinidades em vez de uma relação rígida 1:1 entre atividade e atributo. A duração/endurance alimenta o atributo primário; uma característica secundária mensurável pode gerar uma parcela menor de XP (máximo configurado de 30% da base primária). Exemplos: corrida/esteira = Constituição + Agilidade; remo/escada = Constituição + Força; corda = Agilidade + Constituição. O XP secundário só aparece quando a modalidade atende aos critérios de performance definidos em `js/config/cardio-data.js`. PRs de performance são direcionados ao atributo que representa aquela performance quando apropriado.
+
+
+## Balanceamento e playtest (v0.3.5)
+
+A v0.3.5 adiciona duas ferramentas de desenvolvimento sem alterar a interface principal do jogador:
+
+- `tools/progression-simulator.html`: simula os perfis Casual, Médio e Dedicado em 12, 26 e 52 semanas usando a curva e as regras configuradas em `balance-config.js`, incluindo cardio multiatributo, dieta, missões e uma expectativa de PRs.
+- **Auditoria de XP**: em `Perfil > Configurações > Diagnóstico de balanceamento`, mostra cada entrada de XP, atributo, XP base, bônus, retorno decrescente e componentes conhecidos. O log pode ser exportado em JSON e é separado do save do jogador.
+
+A auditoria usa a chave local `rpgym_balance_audit_v1` e pode ser limpa sem afetar progresso, treinos, dieta ou cardio.
+
+
+## v0.4.0 — Experiência do RPG
+
+A v0.4 preserva o balanceamento consolidado na v0.3.7 e passa a explicar melhor as mecânicas ao jogador. Inclui onboarding local exibido apenas na primeira abertura, reabertura do guia pelas configurações do Perfil, ajuda contextual atualizada, explicação de cardio multiatributo e roadmap, destaque do próximo capítulo permanente e mensagens de evolução já existentes para nível, classe, roadmap e conquistas. O estado do tutorial é salvo junto ao progresso e migrado sem apagar saves antigos.

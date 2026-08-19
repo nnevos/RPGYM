@@ -1,7 +1,7 @@
 "use strict";
 
 const STORAGE_KEY = "rpgGymMvp_v1";
-const APP_VERSION = "0.3.4";
+const APP_VERSION = "0.4.0";
 const MAX_LEVEL = 50;
 const MILESTONE_LEVELS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 const DAY_MS = 86_400_000;

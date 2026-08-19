@@ -7,16 +7,23 @@ function calculateRequiredXP(level) {
   return Math.ceil(BALANCE.levelCurve.base * Math.pow(level, BALANCE.levelCurve.exponent));
 }
 
+function getGlobalLevelAttributeKeys() {
+  const configured = BALANCE.globalLevel?.activeAttributes;
+  return Array.isArray(configured) && configured.length
+    ? configured.filter((key) => state.attributes[key])
+    : Object.keys(ATTRIBUTES);
+}
+
 function calculateGlobalLevel() {
-  const totalLevels = Object.values(state.attributes).reduce(
-    (sum, attribute) => sum + attribute.level,
-    0
-  );
-  return Math.min(MAX_LEVEL, Math.ceil(totalLevels / Object.keys(ATTRIBUTES).length));
+  const keys = getGlobalLevelAttributeKeys();
+  const totalLevels = keys.reduce((sum, key) => sum + state.attributes[key].level, 0);
+  return Math.min(MAX_LEVEL, Math.ceil(totalLevels / Math.max(1, keys.length)));
 }
 
 function calculateJourneyPercent() {
-  const totalProgress = Object.values(state.attributes).reduce((sum, attribute) => {
+  const keys = getGlobalLevelAttributeKeys();
+  const totalProgress = keys.reduce((sum, key) => {
+    const attribute = state.attributes[key];
     if (attribute.level >= MAX_LEVEL) {
       return sum + (MAX_LEVEL - 1);
     }
@@ -26,7 +33,7 @@ function calculateJourneyPercent() {
     return sum + (attribute.level - 1) + fractionalLevel;
   }, 0);
 
-  const maximumProgress = (MAX_LEVEL - 1) * Object.keys(ATTRIBUTES).length;
+  const maximumProgress = (MAX_LEVEL - 1) * keys.length;
   return maximumProgress > 0
     ? Math.min(100, Math.max(0, (totalProgress / maximumProgress) * 100))
     : 0;
@@ -305,10 +312,23 @@ function registerActivity(activityId) {
   const progressEvents = xpAwards.flatMap((award) => addXP(
     award.attributeKey,
     award.xp,
-    activity.name
+    activity.name,
+    {
+      kind: activityId === "cardio" ? "cardio" : (activity.category || "activity"),
+      baseXp: award.baseXp ?? calculation.baseXp,
+      bonusPercent: award.appliedBonus ?? calculation.appliedBonus,
+      categoryMultiplier: calculation.categoryMultiplier || 1,
+      role: award.role || "primary",
+      components: activityId === "cardio" ? {
+        performanceXp: calculation.performance?.bonusXp || 0,
+        secondaryBase: award.role === "secondary" ? award.baseXp : 0
+      } : null,
+      note: calculation.capped ? "bônus limitado pelo cap" : ""
+    }
   ));
 
   const streakUpdate = updateStreak(now);
+  progressEvents.push(...awardDailyDetermination(streakUpdate));
 
   if (activityId === "weeklyStreak") {
     state.streak.lastWeeklyRewardDate = localDateKey(now);
@@ -428,13 +448,17 @@ function buildActivityDetails(activityId, options, calculation) {
   return details.join(" • ");
 }
 
-function addXP(attributeKey, amount, source = "Atividade") {
+function addXP(attributeKey, amount, source = "Atividade", auditMetadata = {}) {
   const attribute = state.attributes[attributeKey];
   const definition = ATTRIBUTES[attributeKey];
   const xpAmount = Math.max(0, Math.round(Number(amount) || 0));
   const events = [];
 
   state.stats.totalXp += xpAmount;
+
+  if (xpAmount > 0 && typeof recordXpAudit === "function" && !auditMetadata.silent) {
+    recordXpAudit(attributeKey, xpAmount, source, auditMetadata);
+  }
 
   if (attribute.level >= MAX_LEVEL || xpAmount <= 0) {
     return events;
@@ -504,6 +528,15 @@ function updateStreak(date = new Date()) {
   return { changed: true, reset };
 }
 
+function awardDailyDetermination(streakUpdate, source = "Dia ativo") {
+  if (!streakUpdate?.changed) return [];
+  const baseXp = Math.max(0, Number(BALANCE.consistency?.firstActiveDayXp) || 0);
+  if (!baseXp) return [];
+  const bonus = getXpBonusBreakdown("determination", { attribute: "determination", category: "habit" });
+  const xp = Math.max(1, Math.round(baseXp * (1 + bonus.appliedBonus)));
+  return addXP("determination", xp, source, { kind: "consistência", baseXp, bonusPercent: bonus.appliedBonus, note: "primeiro dia ativo" });
+}
+
 function getWeeklyStreakEligibility() {
   const today = localDateKey();
 
@@ -556,7 +589,8 @@ function claimMission(missionId) {
     progressEvents = addXP(
       mission.reward.attribute,
       mission.reward.amount,
-      `Missão: ${mission.name}`
+      `Missão: ${mission.name}`,
+      { kind: mission.periodType === "weekly" ? "missão semanal" : "missão diária", baseXp: mission.reward.amount }
     );
     rewardMessage = `+${formatNumber(mission.reward.amount)} XP em ${ATTRIBUTES[mission.reward.attribute].name}.`;
   }

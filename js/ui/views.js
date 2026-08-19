@@ -69,7 +69,7 @@ function renderDashboard() {
     "globalLevelDescription",
     state.player.globalLevel >= MAX_LEVEL
       ? "Nível global máximo alcançado. Sua jornada continua nos hábitos."
-      : `Título atual: ${state.player.title}. Equilibre os seis atributos para avançar.`
+      : `Título atual: ${state.player.title}. Na v0.3.7, o Global usa 5 rotas ativas; Carisma entra quando o Social estiver completo.`
   );
 
   setProgress("globalProgressTrack", "globalProgressBar", journeyPercent);
@@ -556,7 +556,13 @@ function renderAttributeMissionPanel() {
 
   const chapters = ROADMAP_DEFINITIONS[key] || [];
   const roadmapList = document.getElementById("attributeRoadmapList");
-  if (roadmapList) roadmapList.innerHTML = chapters.map((chapter) => renderRoadmapChapter(key, chapter)).join("");
+  if (roadmapList) {
+    const firstOpenIndex = chapters.findIndex((chapter) => !getRoadmapChapterState(key, chapter).claimed);
+    roadmapList.innerHTML = chapters.map((chapter, index) => {
+      const markup = renderRoadmapChapter(key, chapter);
+      return markup.replace('class="roadmap-chapter ', `class="roadmap-chapter ${index === firstOpenIndex ? "is-current " : ""}`);
+    }).join("");
+  }
   const roadmapDone = chapters.filter((chapter) => getRoadmapChapterState(key, chapter).claimed).length;
   setText("attributeRoadmapCount", `${roadmapDone}/${chapters.length} capítulos`);
 

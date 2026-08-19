@@ -14,6 +14,7 @@ function init() {
   hydrateProfileForm();
   updateUI();
   setActiveView("social", false);
+  window.setTimeout(() => openOnboarding(false), 220);
 
   window.setInterval(() => {
     const previousDailyKey = state.missions.dailyKey;
@@ -361,7 +362,12 @@ function createDefaultState() {
     },
     stats: createDefaultStats(),
     roadmaps: Object.fromEntries(Object.keys(ATTRIBUTES).map((key) => [key, { claimedChapters: [] }])),
-    achievements: { unlocked: [] }
+    achievements: { unlocked: [] },
+    tutorial: {
+      welcomeSeen: false,
+      dismissed: {},
+      viewedHelp: {}
+    }
   };
 }
 
@@ -434,6 +440,13 @@ function migrateState(rawState, fallback = createDefaultState()) {
     unlocked: Array.isArray(rawState.achievements?.unlocked)
       ? rawState.achievements.unlocked.filter((id) => ACHIEVEMENT_DEFINITIONS.some((item) => item.id === id))
       : []
+  };
+
+  migrated.tutorial = {
+    ...fallback.tutorial,
+    ...(rawState.tutorial || {}),
+    dismissed: { ...fallback.tutorial.dismissed, ...(rawState.tutorial?.dismissed || {}) },
+    viewedHelp: { ...fallback.tutorial.viewedHelp, ...(rawState.tutorial?.viewedHelp || {}) }
   };
 
   migrated.attributes = {};

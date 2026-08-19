@@ -521,8 +521,20 @@ function finalizeStrengthWorkout() {
   const session={...structuredCloneSafe(workout),finishedAt:finishedAt.toISOString(),durationSeconds,completedSets:calc.completedSets,volume:Math.round(volume),xp:calc.xp,baseXp:calc.baseXp,rawBaseXp:calc.rawBaseXp,bonusPercent:calc.appliedBonus,compoundSets:calc.compoundSets,personalRecords:calc.personalRecords,prCount:calc.rewardedPrCount,performanceBonusXp:calc.performanceBonusXp,categoryMultiplier:calc.categoryMultiplier};
   state.workouts.sessions.unshift(session);
   state.workouts.sessions=state.workouts.sessions.slice(0,200);
-  const progressEvents=addXP("force",calc.xp,workout.name || "Treino de musculação");
+  const progressEvents=addXP("force",calc.xp,workout.name || "Treino de musculação",{
+    kind:"musculação",
+    baseXp:calc.baseXp,
+    bonusPercent:calc.appliedBonus,
+    categoryMultiplier:calc.categoryMultiplier,
+    components:{
+      completionXp:BALANCE.workout.completionXp*calc.completionMultiplier,
+      setXp:Math.max(0,calc.rawBaseXp-(BALANCE.workout.completionXp*calc.completionMultiplier)-calc.performanceBonusXp),
+      performanceXp:calc.performanceBonusXp
+    },
+    note:`${calc.completedSets} séries • ${calc.rewardedPrCount} PR`
+  });
   const streakUpdate=updateStreak(finishedAt);
+  progressEvents.push(...awardDailyDetermination(streakUpdate));
   state.history.unshift({id:createId(),kind:"activity",activityId:"strengthWorkout",activityName:workout.name || "Treino de musculação",attribute:"force",xp:calc.xp,baseXp:calc.baseXp,bonusPercent:calc.appliedBonus,setCount:calc.completedSets,prCount:calc.rewardedPrCount,categoryMultiplier:calc.categoryMultiplier,details:`${calc.completedSets} séries • ${workout.exercises.length} exercícios • ${numberFormatter.format(Math.round(volume))} kg${calc.rewardedPrCount ? ` • ${calc.rewardedPrCount} PR` : ""}`,timestamp:finishedAt.toISOString(),dateKey:localDateKey(finishedAt)});
   state.history=state.history.slice(0,1000);
   rebuildStatsFromSources();
