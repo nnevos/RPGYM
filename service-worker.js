@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "rpgym-v0.6.9";
+const CACHE_NAME = "rpgym-v0.6.11";
 const APP_SHELL = [
   "./",
   "./index.html",

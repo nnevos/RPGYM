@@ -316,6 +316,11 @@ async function handleRegister(event) {
   event.preventDefault();
   showAuthMessage("");
   const button = event.currentTarget.querySelector('button[type="submit"]');
+  if (Date.now() < authSignupCooldownUntil) {
+    showAuthMessage("Limite temporário de cadastro atingido. Aguarde o contador terminar antes de tentar novamente.", "error");
+    startSignupRateLimitCooldown(button, authSignupCooldownUntil - Date.now());
+    return;
+  }
   const displayName = document.getElementById("registerName")?.value.trim() || "";
   const email = document.getElementById("registerEmail")?.value.trim() || "";
   const phone = document.getElementById("registerPhone")?.value.trim() || "";
@@ -341,9 +346,25 @@ async function handleRegister(event) {
     }
     await handleAuthenticatedSession(data.session);
   } catch (error) {
+
+    const status = Number(error?.status || error?.statusCode || 0);
+    const code = String(error?.code || "").toLowerCase();
+    const message = String(error?.message || "").toLowerCase();
+    const isRateLimited =
+      status === 429 ||
+      code.includes("over_email_send_rate_limit") ||
+      code.includes("rate_limit") ||
+      message.includes("too many requests") ||
+      message.includes("rate limit");
+
     showAuthMessage(authFriendlyError(error), "error");
+
+    if (isRateLimited) {
+      startSignupRateLimitCooldown(button, 60_000);
+      return;
+    }
   } finally {
-    setAuthBusy(button, false);
+    if (Date.now() >= authSignupCooldownUntil) setAuthBusy(button, false);
   }
 }
 
@@ -409,15 +430,60 @@ function withAuthTimeout(promise, timeoutMs = 10000, message = "A conexão demor
 }
 
 function authFriendlyError(error) {
-  const message = String(error?.message || error || "Erro desconhecido");
-  const normalized = message.toLowerCase();
-  if (normalized.includes("invalid login credentials")) return "Email ou senha incorretos.";
-  if (normalized.includes("email not confirmed")) return "Confirme seu email antes de entrar.";
-  if (normalized.includes("user already registered")) return "Já existe uma conta com este email.";
-  if (normalized.includes("password should be")) return "A senha não atende aos requisitos mínimos.";
-  if (normalized.includes("rate limit")) return "Muitas tentativas. Aguarde um pouco e tente novamente.";
-  return message;
+  const status = Number(error?.status || error?.statusCode || 0);
+  const code = String(error?.code || "").toLowerCase();
+  const message = String(error?.message || "").toLowerCase();
+
+  if (
+    status === 429 ||
+    code.includes("over_email_send_rate_limit") ||
+    code.includes("rate_limit") ||
+    message.includes("too many requests") ||
+    message.includes("rate limit") ||
+    message.includes("email rate limit")
+  ) {
+    return "Limite temporário de envio de emails atingido. Aguarde alguns minutos antes de tentar novamente.";
+  }
+
+  if (message.includes("user already registered") || message.includes("already registered")) {
+    return "Este email já possui uma conta. Tente entrar em vez de criar outra.";
+  }
+  if (message.includes("invalid login credentials")) {
+    return "Email ou senha incorretos.";
+  }
+  if (message.includes("email not confirmed")) {
+    return "Confirme seu email antes de entrar.";
+  }
+  if (message.includes("password")) {
+    return error?.message || "Confira os requisitos da senha.";
+  }
+
+  return error?.message || "Não foi possível concluir esta ação agora.";
 }
+
+let authSignupCooldownUntil = 0;
+
+function startSignupRateLimitCooldown(button, durationMs = 60_000) {
+  authSignupCooldownUntil = Date.now() + durationMs;
+  if (!button) return;
+
+  const tick = () => {
+    const remaining = Math.max(0, authSignupCooldownUntil - Date.now());
+    if (!remaining) {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.textContent = "Inscrever-se";
+      return;
+    }
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.textContent = `Aguarde ${Math.ceil(remaining / 1000)}s`;
+    window.setTimeout(tick, 1000);
+  };
+
+  tick();
+}
+
 
 async function loadOrCreateProfile(session) {
   const user = session.user;
