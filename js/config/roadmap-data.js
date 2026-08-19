@@ -15,7 +15,8 @@ const ROADMAP_DEFINITIONS = Object.freeze({
       { id: "workouts", label: "Conclua 10 treinos de musculação", metric: { type: "lifetime", key: "workoutsCompleted" }, target: 10 },
       { id: "sets", label: "Complete 100 séries validas", metric: { type: "lifetime", key: "setsCompleted" }, target: 100 },
       { id: "compound", label: "Complete 30 séries compostas", metric: { type: "lifetime", key: "compoundSets" }, target: 30 },
-      { id: "volume", label: "Acumule 20.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 20000 }
+      { id: "volume", label: "Acumule 20.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 20000 },
+      { id: "prs", label: "Supere 2 recordes pessoais", metric: { type: "lifetime", key: "workoutPersonalRecords" }, target: 2 }
     ]},
     { id: "force_15", unlockLevel: 15, title: "Carga e Controle", rewardLabel: "Marco de Força II", objectives: [
       { id: "workouts", label: "Conclua 20 treinos de musculação", metric: { type: "lifetime", key: "workoutsCompleted" }, target: 20 },
@@ -27,7 +28,8 @@ const ROADMAP_DEFINITIONS = Object.freeze({
       { id: "workouts", label: "Conclua 35 treinos de musculação", metric: { type: "lifetime", key: "workoutsCompleted" }, target: 35 },
       { id: "sets", label: "Complete 400 séries validas", metric: { type: "lifetime", key: "setsCompleted" }, target: 400 },
       { id: "compound", label: "Complete 120 séries compostas", metric: { type: "lifetime", key: "compoundSets" }, target: 120 },
-      { id: "volume", label: "Acumule 100.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 100000 }
+      { id: "volume", label: "Acumule 100.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 100000 },
+      { id: "prs", label: "Supere 8 recordes pessoais", metric: { type: "lifetime", key: "workoutPersonalRecords" }, target: 8 }
     ]},
     { id: "force_25", unlockLevel: 25, title: "Força Lapidada", rewardLabel: "Marco de Força III", objectives: [
       { id: "workouts", label: "Conclua 55 treinos de musculação", metric: { type: "lifetime", key: "workoutsCompleted" }, target: 55 },
@@ -39,7 +41,8 @@ const ROADMAP_DEFINITIONS = Object.freeze({
       { id: "workouts", label: "Conclua 80 treinos de musculação", metric: { type: "lifetime", key: "workoutsCompleted" }, target: 80 },
       { id: "sets", label: "Complete 950 séries validas", metric: { type: "lifetime", key: "setsCompleted" }, target: 950 },
       { id: "compound", label: "Complete 300 séries compostas", metric: { type: "lifetime", key: "compoundSets" }, target: 300 },
-      { id: "volume", label: "Acumule 300.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 300000 }
+      { id: "volume", label: "Acumule 300.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 300000 },
+      { id: "prs", label: "Supere 18 recordes pessoais", metric: { type: "lifetime", key: "workoutPersonalRecords" }, target: 18 }
     ]},
     { id: "force_35", unlockLevel: 35, title: "Potência Implacavel", rewardLabel: "Marco de Força IV", objectives: [
       { id: "workouts", label: "Conclua 110 treinos de musculação", metric: { type: "lifetime", key: "workoutsCompleted" }, target: 110 },
@@ -51,7 +54,8 @@ const ROADMAP_DEFINITIONS = Object.freeze({
       { id: "workouts", label: "Conclua 145 treinos de musculação", metric: { type: "lifetime", key: "workoutsCompleted" }, target: 145 },
       { id: "sets", label: "Complete 1.750 séries validas", metric: { type: "lifetime", key: "setsCompleted" }, target: 1750 },
       { id: "compound", label: "Complete 560 séries compostas", metric: { type: "lifetime", key: "compoundSets" }, target: 560 },
-      { id: "volume", label: "Acumule 650.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 650000 }
+      { id: "volume", label: "Acumule 650.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 650000 },
+      { id: "prs", label: "Supere 30 recordes pessoais", metric: { type: "lifetime", key: "workoutPersonalRecords" }, target: 30 }
     ]},
     { id: "force_45", unlockLevel: 45, title: "Força Lendaria", rewardLabel: "Marco de Força V", objectives: [
       { id: "workouts", label: "Conclua 185 treinos de musculação", metric: { type: "lifetime", key: "workoutsCompleted" }, target: 185 },
@@ -63,7 +67,8 @@ const ROADMAP_DEFINITIONS = Object.freeze({
       { id: "workouts", label: "Conclua 230 treinos de musculação", metric: { type: "lifetime", key: "workoutsCompleted" }, target: 230 },
       { id: "sets", label: "Complete 2.800 séries validas", metric: { type: "lifetime", key: "setsCompleted" }, target: 2800 },
       { id: "compound", label: "Complete 900 séries compostas", metric: { type: "lifetime", key: "compoundSets" }, target: 900 },
-      { id: "volume", label: "Acumule 1.200.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 1200000 }
+      { id: "volume", label: "Acumule 1.200.000 kg de volume", metric: { type: "lifetime", key: "totalVolumeKg" }, target: 1200000 },
+      { id: "prs", label: "Supere 45 recordes pessoais", metric: { type: "lifetime", key: "workoutPersonalRecords" }, target: 45 }
     ]}
   ],
 

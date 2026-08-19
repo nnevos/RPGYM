@@ -48,7 +48,9 @@ function createDefaultStats() {
       setsCompleted: 0,
       compoundSets: 0,
       totalVolumeKg: 0,
+      workoutPersonalRecords: 0,
       cardioSessions: 0,
+      cardioPersonalRecords: 0,
       cardioMinutes: 0,
       cardioDistanceKm: 0,
       uniqueExercises: 0,
@@ -81,7 +83,9 @@ function createEmptyDailyStats() {
     sets: 0,
     compoundSets: 0,
     volumeKg: 0,
+    workoutPersonalRecords: 0,
     cardioSessions: 0,
+    cardioPersonalRecords: 0,
     cardioMinutes: 0,
     cardioDistanceKm: 0,
     meals: 0,
@@ -143,6 +147,10 @@ function rebuildStatsFromSources() {
       day.cardioSessions += 1;
       day.cardioMinutes += minutes;
       day.cardioDistanceKm += distanceKm;
+      if (entry.performance?.isPr) {
+        day.cardioPersonalRecords += 1;
+        next.lifetime.cardioPersonalRecords += 1;
+      }
       next.lifetime.cardioSessions += 1;
       next.lifetime.cardioMinutes += minutes;
       next.lifetime.cardioDistanceKm += distanceKm;
@@ -180,6 +188,9 @@ function rebuildStatsFromSources() {
     next.lifetime.setsCompleted += completedSets;
     next.lifetime.compoundSets += compoundSets;
     next.lifetime.totalVolumeKg += volume;
+    const prCount = Math.max(0, Number(session.prCount) || 0);
+    day.workoutPersonalRecords += prCount;
+    next.lifetime.workoutPersonalRecords += prCount;
     workoutDays.add(dateKey);
     activeDays.add(dateKey);
 

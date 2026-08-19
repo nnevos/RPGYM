@@ -383,25 +383,105 @@ function formatDurationSeconds(seconds) {
   return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
 
+
+function getSetPerformanceValue(set, tracking) {
+  if (!set?.completed) return 0;
+  if (tracking === "time") return Math.max(0, Number(set.durationSeconds) || 0);
+  const reps = Math.max(0, Number(set.reps) || 0);
+  if (tracking === "reps") return reps;
+  const weight = Math.max(0, Number(set.weight) || 0);
+  if (!(weight > 0 && reps > 0)) return 0;
+  // Epley: estimativa simples de 1RM para comparar progresso entre faixas de repeticao.
+  return weight * (1 + reps / 30);
+}
+
+function getBestHistoricalExercisePerformance(exerciseId, tracking) {
+  let best = 0;
+  for (const session of state.workouts?.sessions || []) {
+    const exercise = session.exercises?.find((item) => item.exerciseId === exerciseId);
+    if (!exercise) continue;
+    for (const set of exercise.sets || []) {
+      const value = getSetPerformanceValue(set, tracking);
+      if (value > best) best = value;
+    }
+  }
+  return best;
+}
+
+function evaluateWorkoutPersonalRecords(workout) {
+  const records = [];
+  const ratio = Math.max(0, Number(BALANCE.workout.prImprovementRatio) || 0);
+
+  for (const exercise of workout.exercises || []) {
+    const tracking = getExerciseTracking(exercise.exerciseId);
+    const historicalBest = getBestHistoricalExercisePerformance(exercise.exerciseId, tracking);
+    if (!(historicalBest > 0)) continue; // primeira execucao cria baseline, nao e PR ainda
+
+    const currentBest = Math.max(0, ...(exercise.sets || []).map((set) => getSetPerformanceValue(set, tracking)));
+    if (!(currentBest > historicalBest * (1 + ratio))) continue;
+
+    records.push({
+      exerciseId: exercise.exerciseId,
+      name: exercise.name,
+      tracking,
+      previous: historicalBest,
+      current: currentBest
+    });
+  }
+
+  return records;
+}
+
 function calculateStrengthWorkoutXp(workout) {
   const forceLevel = state.attributes.force.level;
-  const levelBonus = Math.min(.5, forceLevel*.01);
+  const levelBonus = Math.min(BALANCE.bonuses.levelCap, forceLevel * BALANCE.bonuses.levelPerLevel);
   const classBonus = getClassBonus("force");
   const buffBonus = getActiveBuffs().reduce((sum,buff)=>sum+Math.max(0,Number(buff.multiplier)-1),0);
-  const rawGlobalBonus = levelBonus + classBonus + buffBonus;
-  const appliedGlobalBonus = Math.min(.5,rawGlobalBonus);
-  let base=0, completedSets=0, compoundSets=0;
+  const appliedGlobalBonus = Math.min(BALANCE.bonuses.totalCap, levelBonus + classBonus + buffBonus);
+  let completedSets=0, compoundSets=0, warmupSets=0;
   workout.exercises.forEach((exercise)=>{
     const def=getExerciseById(exercise.exerciseId);
     exercise.sets.forEach((set)=>{
       if(!set.completed) return;
       completedSets += 1;
-      let setBase = set.type === "warmup" ? 8 : (set.type === "failure" || set.type === "drop") ? 20 : 12;
-      if(def?.mechanic === "composto") { setBase *= 1.10; compoundSets += 1; }
-      base += setBase;
+      if(set.type === "warmup") warmupSets += 1;
+      if(def?.mechanic === "composto") compoundSets += 1;
     });
   });
-  return { baseXp:Math.round(base), xp:Math.max(1,Math.round(base*(1+appliedGlobalBonus))), completedSets, compoundSets, appliedBonus:appliedGlobalBonus };
+
+  const cfg=BALANCE.workout;
+  const workingSets=Math.max(0,completedSets-warmupSets);
+  const fullSets=Math.min(workingSets,cfg.fullSetUntil);
+  const reducedSets=Math.max(0,workingSets-cfg.fullSetUntil);
+  const setXp=fullSets*cfg.setXp + reducedSets*cfg.reducedSetXp + warmupSets*cfg.setXp*cfg.warmupMultiplier;
+
+  let completionMultiplier = 1;
+  if (workingSets < 3) completionMultiplier = cfg.shortSessionCompletionMultiplier;
+  else if (workingSets < cfg.minWorkingSetsForFullCompletion) completionMultiplier = cfg.mediumSessionCompletionMultiplier;
+  const completionXp = cfg.completionXp * completionMultiplier;
+
+  const personalRecords = evaluateWorkoutPersonalRecords(workout);
+  const rewardedPrCount = Math.min(personalRecords.length, cfg.maxPrBonusesPerWorkout);
+  const performanceBonusXp = rewardedPrCount * cfg.prBonus;
+
+  const rawBaseXp = Math.round(completionXp + setXp + performanceBonusXp);
+  const categoryMultiplier = getSameCategoryDailyMultiplier("workout");
+  const base=Math.max(1, Math.round(rawBaseXp * categoryMultiplier));
+  return {
+    baseXp:base,
+    rawBaseXp,
+    xp:Math.max(1,Math.round(base*(1+appliedGlobalBonus))),
+    completedSets,
+    workingSets,
+    compoundSets,
+    warmupSets,
+    completionMultiplier,
+    categoryMultiplier,
+    personalRecords,
+    rewardedPrCount,
+    performanceBonusXp,
+    appliedBonus:appliedGlobalBonus
+  };
 }
 
 function finishStrengthWorkout() {
@@ -422,6 +502,8 @@ function finishStrengthWorkout() {
       { label: "Séries", value: calc.completedSets },
       { label: "Exercícios", value: workout.exercises.length },
       { label: "Volume", value: `${numberFormatter.format(Math.round(volume))} kg` },
+      ...(calc.rewardedPrCount ? [{ label: "Novos PRs", value: calc.rewardedPrCount }] : []),
+      ...(calc.categoryMultiplier < 1 ? [{ label: "Sessão repetida", value: `${Math.round(calc.categoryMultiplier * 100)}% XP` }] : []),
       { label: "XP estimado", value: `+${formatNumber(calc.xp)} XP` }
     ]
   }, finalizeStrengthWorkout);
@@ -436,12 +518,12 @@ function finalizeStrengthWorkout() {
   const durationSeconds=Math.max(1,Math.round((finishedAt-new Date(workout.startedAt))/1000));
   let volume=0;
   workout.exercises.forEach((exercise)=>exercise.sets.forEach((set)=>{if(set.completed) volume+=(Number(set.weight)||0)*(Number(set.reps)||0)}));
-  const session={...structuredCloneSafe(workout),finishedAt:finishedAt.toISOString(),durationSeconds,completedSets:calc.completedSets,volume:Math.round(volume),xp:calc.xp,baseXp:calc.baseXp,bonusPercent:calc.appliedBonus,compoundSets:calc.compoundSets};
+  const session={...structuredCloneSafe(workout),finishedAt:finishedAt.toISOString(),durationSeconds,completedSets:calc.completedSets,volume:Math.round(volume),xp:calc.xp,baseXp:calc.baseXp,rawBaseXp:calc.rawBaseXp,bonusPercent:calc.appliedBonus,compoundSets:calc.compoundSets,personalRecords:calc.personalRecords,prCount:calc.rewardedPrCount,performanceBonusXp:calc.performanceBonusXp,categoryMultiplier:calc.categoryMultiplier};
   state.workouts.sessions.unshift(session);
   state.workouts.sessions=state.workouts.sessions.slice(0,200);
   const progressEvents=addXP("force",calc.xp,workout.name || "Treino de musculação");
   const streakUpdate=updateStreak(finishedAt);
-  state.history.unshift({id:createId(),kind:"activity",activityId:"strengthWorkout",activityName:workout.name || "Treino de musculação",attribute:"force",xp:calc.xp,baseXp:calc.baseXp,bonusPercent:calc.appliedBonus,setCount:calc.completedSets,details:`${calc.completedSets} séries • ${workout.exercises.length} exercícios • ${numberFormatter.format(Math.round(volume))} kg`,timestamp:finishedAt.toISOString(),dateKey:localDateKey(finishedAt)});
+  state.history.unshift({id:createId(),kind:"activity",activityId:"strengthWorkout",activityName:workout.name || "Treino de musculação",attribute:"force",xp:calc.xp,baseXp:calc.baseXp,bonusPercent:calc.appliedBonus,setCount:calc.completedSets,prCount:calc.rewardedPrCount,categoryMultiplier:calc.categoryMultiplier,details:`${calc.completedSets} séries • ${workout.exercises.length} exercícios • ${numberFormatter.format(Math.round(volume))} kg${calc.rewardedPrCount ? ` • ${calc.rewardedPrCount} PR` : ""}`,timestamp:finishedAt.toISOString(),dateKey:localDateKey(finishedAt)});
   state.history=state.history.slice(0,1000);
   rebuildStatsFromSources();
   state.workouts.active=null;
@@ -460,7 +542,9 @@ function showWorkoutResult(session,calc,beforeForce,streakUpdate) {
   const pct=force.level>=MAX_LEVEL?100:Math.min(100,(force.xp/needed)*100);
   setText("workoutResultTitle",session.name || "Treino concluído");
   setText("workoutResultXp",`+${formatNumber(calc.xp)} XP`);
-  setText("workoutResultXpBreakdown",`${formatNumber(calc.baseXp)} XP base • +${Math.round(calc.appliedBonus*100)}% de bônus`);
+  const repeatText = calc.categoryMultiplier < 1 ? ` • ${Math.round(calc.categoryMultiplier*100)}% por repetição no dia` : "";
+  const prText = calc.rewardedPrCount ? ` • +${calc.performanceBonusXp} XP por PR` : "";
+  setText("workoutResultXpBreakdown",`${formatNumber(calc.baseXp)} XP base${prText}${repeatText} • +${Math.round(calc.appliedBonus*100)}% bônus`);
   setText("workoutResultForceLevel",`Força • Nv. ${force.level}`);
   setText("workoutResultForceProgress",force.level>=MAX_LEVEL?"Nível máximo":`${formatNumber(force.xp)} / ${formatNumber(needed)} XP`);
   const bar=document.getElementById("workoutResultForceBar"); if(bar) bar.style.width=`${pct}%`;
@@ -469,9 +553,10 @@ function showWorkoutResult(session,calc,beforeForce,streakUpdate) {
   setText("workoutResultVolume",`${numberFormatter.format(session.volume)} kg`);
   setText("workoutResultDuration",formatDurationSeconds(session.durationSeconds));
   const levelText=force.level>beforeForce.level?`<strong>Level up!</strong> Força ${beforeForce.level} → ${force.level}. `:"";
-  const compoundText=calc.compoundSets?`${calc.compoundSets} séries compostas receberam bônus. `:"";
+  const prSummary=calc.rewardedPrCount?`<strong>${calc.rewardedPrCount} novo${calc.rewardedPrCount>1?"s":""} PR${calc.rewardedPrCount>1?"s":""}!</strong> `:"";
+  const repeatSummary=calc.categoryMultiplier<1?`Retorno reduzido por ser outro treino de musculação no mesmo dia. `:"";
   const streakText=streakUpdate.changed?`Streak atual: ${formatDays(state.streak.current)}.`:"";
-  const bonus=document.getElementById("workoutResultBonus"); if(bonus) bonus.innerHTML=`${levelText}${compoundText}${streakText || "Progresso salvo automaticamente."}`;
+  const bonus=document.getElementById("workoutResultBonus"); if(bonus) bonus.innerHTML=`${levelText}${prSummary}${repeatSummary}${streakText || "Progresso salvo automaticamente."}`;
   overlay.hidden=false; document.body.classList.add("modal-open");
 }
 

@@ -1726,3 +1726,70 @@ Cada atributo possui 10 capitulos em `js/config/roadmap-data.js`, nos niveis 5, 
 Os objetivos sao cumulativos. Para rebalancear, altere apenas `target`, `label`, `title` ou `rewardLabel`, mantendo `id` e `metric` quando quiser preservar compatibilidade com saves.
 
 A UI calcula o estagio da classe pelo maior capitulo de classe realmente resgatado, portanto apenas atingir o nivel nao promove automaticamente a classe. O bonus mestre tambem exige o capitulo de nivel 50.
+
+
+# Central de balanceamento (v0.3.2)
+
+Antes de alterar números dentro das engines, abra `js/config/balance-config.js`. Ele concentra curva de nível, bônus, musculação, cardio, dieta, missões, roadmap e regras anti-farm.
+
+A curva atual é `120 × nível^1.35`. Ela é uma curva de potência, não exponencial pura.
+
+O treino usa XP de conclusão + séries. Até 20 séries de trabalho valem o valor integral; depois disso as séries continuam dando XP, porém com retorno menor. Não existe cap semanal.
+
+O cardio usa conclusão da sessão + minutos por faixas: 0–30, 31–60 e 60+. Quanto mais tempo, mais XP, mas o retorno marginal cai.
+
+O limite combinado de bônus foi reduzido para 25%. Os estágios de classe usam 3%, 5%, 7%, 10% e 15% nos marcos 10/20/30/40/50.
+
+Para testar a velocidade de progressão, abra `tools/progression-simulator.html`. Ajuste primeiro `balance-config.js`, depois as recompensas específicas em `mission-data.js` e `roadmap-data.js`.
+
+# Modelo A — v0.3.3
+
+A filosofia atual é **sem cap de XP**. Atividade real adicional sempre pode gerar progresso.
+
+## Repetição no mesmo dia
+
+Edite em `js/config/balance-config.js`:
+
+```js
+antiFarm: {
+  sameCategoryDailyMultipliers: [1, 0.75, 0.50],
+  fourthPlusSameCategoryMultiplier: 0.40
+}
+```
+
+A primeira musculação do dia recebe 100%, a segunda 75%, a terceira 50% e da quarta em diante 40%. Cardio usa um contador próprio. Portanto, musculação + cardio no mesmo dia continuam recebendo 100% cada na primeira sessão da categoria.
+
+## PR de musculação
+
+```js
+workout: {
+  prBonus: 10,
+  maxPrBonusesPerWorkout: 3,
+  prImprovementRatio: 0.01
+}
+```
+
+O primeiro registro de um exercício cria a referência. A partir do próximo treino, superar a melhor marca por mais de 1% pode gerar PR. No máximo três exercícios geram bônus de PR por treino, embora todos os PRs possam ser registrados no resumo.
+
+Para exercícios com carga + reps o sistema usa 1RM estimado de Epley para evitar que apenas aumentar peso com uma repetição muito baixa seja sempre a melhor estratégia. Exercícios de peso corporal usam repetições e exercícios isométricos usam duração.
+
+## Performance do cardio
+
+```js
+cardio: {
+  performanceBonus: 12,
+  performanceImprovementRatio: 0.01
+}
+```
+
+A comparação varia por modalidade: ritmo em corrida, velocidade média em bike/elíptico, /500m no remo, saltos/min na corda, ritmo /100m na natação e andares/min na escada.
+
+## Sessões curtas
+
+O bônus fixo de conclusão não deve tornar micro-sessões a melhor estratégia para farmar XP.
+
+Musculação usa `minWorkingSetsForFullCompletion`; abaixo dessa faixa o bônus fixo é proporcional por patamares. Cardio usa `minMinutesForFullCompletion`, com bônus de conclusão proporcional até atingir o tempo mínimo.
+
+## Regra de design
+
+Não transforme retorno decrescente em bloqueio. O jogador que fizer mais deve sempre terminar com mais XP do que quem fez menos, desde que a atividade seja válida. O objetivo é reduzir a eficiência do spam, não punir treino real.

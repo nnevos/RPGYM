@@ -85,7 +85,14 @@ function updateCardioConfirmationSummary() {
   setText("cardioConfirmXp", `${formatNumber(calculation.xp)} XP`);
   const derived = getCardioDerivedMetric(options);
   const note = document.getElementById("cardioConfirmNote");
-  if (note) note.textContent = derived ? `Calculado automaticamente: ${derived}.` : "Preencha os dados da máquina ou atividade para concluir o registro.";
+  if (note) {
+    const parts = [];
+    if (derived) parts.push(`Calculado automaticamente: ${derived}.`);
+    if (calculation.performance?.isPr) parts.push(`${calculation.performance.label}: novo recorde pessoal (+${BALANCE.cardio.performanceBonus} XP base).`);
+    else if (calculation.performance?.label === "Referência inicial") parts.push("Esta sessão cria sua primeira referência de performance para este cardio.");
+    if ((calculation.categoryMultiplier || 1) < 1) parts.push(`Sessão repetida hoje: ${Math.round(calculation.categoryMultiplier * 100)}% do XP da categoria.`);
+    note.textContent = parts.join(" ") || "Preencha os dados da máquina ou atividade para concluir o registro.";
+  }
 }
 
 function validateCardioConfirmation() {

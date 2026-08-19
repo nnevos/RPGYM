@@ -4,7 +4,7 @@ function calculateRequiredXP(level) {
   if (level >= MAX_LEVEL) {
     return 0;
   }
-  return Math.ceil(100 * Math.pow(level, 1.2));
+  return Math.ceil(BALANCE.levelCurve.base * Math.pow(level, BALANCE.levelCurve.exponent));
 }
 
 function calculateGlobalLevel() {
@@ -60,6 +60,93 @@ function getActivityAttribute(activityId, options = {}) {
   return ACTIVITIES[activityId]?.attribute || "constitution";
 }
 
+
+function getSameCategoryDailyMultiplier(category, date = new Date()) {
+  const dateKey = localDateKey(date);
+  let previousCount = 0;
+
+  if (category === "workout") {
+    previousCount = (state.workouts?.sessions || []).filter((session) => {
+      const stamp = session?.finishedAt || session?.startedAt;
+      return stamp && localDateKey(new Date(stamp)) === dateKey;
+    }).length;
+  } else if (category === "cardio") {
+    previousCount = (state.history || []).filter((entry) => {
+      if (!entry || (entry.activityId !== "cardio" && !entry.cardioData)) return false;
+      const key = entry.dateKey || (entry.timestamp ? localDateKey(new Date(entry.timestamp)) : "");
+      return key === dateKey;
+    }).length;
+  }
+
+  const configured = BALANCE.antiFarm.sameCategoryDailyMultipliers || [1, 0.75, 0.5];
+  if (previousCount < configured.length) return configured[previousCount];
+  return BALANCE.antiFarm.fourthPlusSameCategoryMultiplier ?? configured[configured.length - 1] ?? 0.4;
+}
+
+function getCardioPerformanceValue(type, data = {}) {
+  const minutes = Math.max(0, Number(data.minutes) || 0);
+  const distanceKm = Math.max(0, Number(data.distance) || 0);
+  const distanceMeters = Math.max(0, Number(data.distanceMeters) || 0);
+
+  switch (type) {
+    case "treadmill":
+    case "outdoor_run":
+      if (minutes >= 5 && distanceKm >= 1) return { key: "pace", value: minutes / distanceKm, lowerIsBetter: true, label: "Melhor ritmo" };
+      break;
+    case "stationary_bike":
+    case "outdoor_bike":
+    case "elliptical":
+      if (minutes >= 5 && distanceKm > 0) return { key: "speed", value: distanceKm / (minutes / 60), lowerIsBetter: false, label: "Melhor velocidade média" };
+      break;
+    case "stair_climber": {
+      const floors = Math.max(0, Number(data.floors) || 0);
+      if (minutes >= 5 && floors > 0) return { key: "floorsPerMinute", value: floors / minutes, lowerIsBetter: false, label: "Melhor ritmo na escada" };
+      break;
+    }
+    case "rowing":
+      if (minutes > 0 && distanceMeters >= 500) return { key: "split500", value: minutes / (distanceMeters / 500), lowerIsBetter: true, label: "Melhor ritmo /500 m" };
+      break;
+    case "jump_rope": {
+      const jumps = Math.max(0, Number(data.jumps) || 0);
+      if (minutes >= 3 && jumps > 0) return { key: "jumpsPerMinute", value: jumps / minutes, lowerIsBetter: false, label: "Melhor cadência na corda" };
+      break;
+    }
+    case "swimming":
+      if (minutes > 0 && distanceMeters >= 100) return { key: "pace100", value: minutes / (distanceMeters / 100), lowerIsBetter: true, label: "Melhor ritmo /100 m" };
+      break;
+  }
+  return null;
+}
+
+function evaluateCardioPerformance(options = {}) {
+  const current = getCardioPerformanceValue(options.type, options);
+  if (!current) return { isPr: false, bonusXp: 0, label: "", current: null, previous: null };
+
+  const previousValues = (state.history || [])
+    .filter((entry) => entry && (entry.activityId === "cardio" || entry.cardioData) && entry.cardioData?.type === options.type)
+    .map((entry) => getCardioPerformanceValue(options.type, entry.cardioData || {}))
+    .filter((metric) => metric && metric.key === current.key)
+    .map((metric) => metric.value)
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  // A primeira sessao cria a referencia. PR so passa a existir quando ha um historico para superar.
+  if (!previousValues.length) return { isPr: false, bonusXp: 0, label: "Referência inicial", current: current.value, previous: null };
+
+  const previousBest = current.lowerIsBetter ? Math.min(...previousValues) : Math.max(...previousValues);
+  const ratio = Math.max(0, Number(BALANCE.cardio.performanceImprovementRatio) || 0);
+  const threshold = current.lowerIsBetter ? previousBest * (1 - ratio) : previousBest * (1 + ratio);
+  const improved = current.lowerIsBetter ? current.value < threshold : current.value > threshold;
+
+  return {
+    isPr: improved,
+    bonusXp: improved ? BALANCE.cardio.performanceBonus : 0,
+    label: current.label,
+    current: current.value,
+    previous: previousBest,
+    key: current.key
+  };
+}
+
 function calculateActivityXp(activityId, options = {}) {
   const activity = ACTIVITIES[activityId];
   if (!activity) {
@@ -71,16 +158,25 @@ function calculateActivityXp(activityId, options = {}) {
   let baseXp = activity.baseXp;
   const breakdown = [];
 
+  let categoryMultiplier = 1;
+  let performance = null;
+
   if (activityId === "cardio") {
-    const minutes = Math.max(1, Number(options.minutes) || 1);
+    const minutes = Math.max(1 / 60, Number(options.minutes) || 1 / 60);
     const distanceKm = Math.max(0, Number(options.distance) || (Number(options.distanceMeters) || 0) / 1000);
-    const isAgility = attributeKey === "agility";
-    // Mantém o balanceamento atual: tempo é a base; distância dá um bônus pequeno.
-    baseXp = minutes < 30 ? Math.max(5, Math.round((minutes / 30) * 20)) : 20 + Math.floor(minutes - 30);
-    baseXp += Math.min(isAgility ? 20 : 15, Math.floor(distanceKm * (isAgility ? 2 : 1)));
+    const cfg = BALANCE.cardio;
+    const completionRatio = Math.min(1, minutes / Math.max(1, cfg.minMinutesForFullCompletion));
+    const completionXp = cfg.completionXp * completionRatio;
+    const first30 = Math.min(minutes, 30) * cfg.first30PerMinute;
+    const next30 = Math.max(0, Math.min(minutes - 30, 30)) * cfg.minute31to60;
+    const after60 = Math.max(0, minutes - 60) * cfg.after60PerMinute;
+    performance = evaluateCardioPerformance(options);
+    categoryMultiplier = getSameCategoryDailyMultiplier("cardio");
+    baseXp = (completionXp + first30 + next30 + after60 + (distanceKm * cfg.distanceBonusPerKm) + performance.bonusXp) * categoryMultiplier;
+    baseXp = Math.round(baseXp);
   }
 
-  const levelBonus = Math.min(0.5, attribute.level * 0.01);
+  const levelBonus = Math.min(BALANCE.bonuses.levelCap, attribute.level * BALANCE.bonuses.levelPerLevel);
   if (levelBonus > 0) {
     breakdown.push({
       label: `Nível de ${ATTRIBUTES[attributeKey].name}`,
@@ -113,7 +209,7 @@ function calculateActivityXp(activityId, options = {}) {
   });
 
   const rawBonus = breakdown.reduce((sum, item) => sum + item.value, 0);
-  const appliedBonus = Math.min(0.5, rawBonus);
+  const appliedBonus = Math.min(BALANCE.bonuses.totalCap, rawBonus);
   const xp = Math.max(1, Math.round(baseXp * (1 + appliedBonus)));
 
   return {
@@ -121,9 +217,11 @@ function calculateActivityXp(activityId, options = {}) {
     baseXp,
     rawBonus,
     appliedBonus,
-    capped: rawBonus > 0.5,
+    capped: rawBonus > BALANCE.bonuses.totalCap,
     breakdown,
-    attributeKey
+    attributeKey,
+    categoryMultiplier,
+    performance
   };
 }
 
@@ -131,8 +229,11 @@ function getClassBonus(attributeKey) {
   const attribute = state.attributes[attributeKey];
   const definition = ATTRIBUTES[attributeKey];
   if (!isClassUnlocked(attributeKey)) return 0;
-  if (isRoadmapChapterClaimed(attributeKey, `${attributeKey}_50`)) return definition.masterBonus;
-  return definition.unlockBonus;
+  let highestClaimed = 0;
+  [10, 20, 30, 40, 50].forEach((milestone) => {
+    if (isRoadmapChapterClaimed(attributeKey, `${attributeKey}_${milestone}`)) highestClaimed = milestone;
+  });
+  return BALANCE.bonuses.classByMilestone[highestClaimed] || 0;
 }
 
 function getIntelligenceHabitBonus(activity) {
@@ -193,7 +294,7 @@ function registerActivity(activityId) {
     baseXp: calculation.baseXp,
     bonusPercent: calculation.appliedBonus,
     details,
-    ...(activityId === "cardio" ? { cardioData: { ...options } } : {}),
+    ...(activityId === "cardio" ? { cardioData: { ...options }, performance: calculation.performance || null, categoryMultiplier: calculation.categoryMultiplier || 1 } : {}),
     timestamp: now.toISOString(),
     dateKey: localDateKey(now)
   };
@@ -210,7 +311,7 @@ function registerActivity(activityId) {
   showToast(
     `+${formatNumber(calculation.xp)} XP em ${ATTRIBUTES[effectiveAttribute].name}`,
     calculation.capped
-      ? `${activity.name} registrado. O bônus total atingiu o limite de +50%.`
+      ? `${activity.name} registrado. O bônus total atingiu o limite configurado.`
       : `${activity.name} registrado com sucesso.`,
     activity.icon
   );
