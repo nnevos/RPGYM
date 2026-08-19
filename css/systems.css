@@ -1014,3 +1014,33 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .roadmap-class-evolution span{font-size:.49rem;color:#aaa1d1}.roadmap-class-evolution strong{font-size:.54rem;color:#c9bcff;text-align:right}
 @media(min-width:760px){.roadmap-journey{max-width:720px;margin-left:auto;margin-right:auto}.class-evolution-track{max-width:460px;margin-left:auto;margin-right:auto}.class-evolution-step:not(:last-child) i:after{width:82px;max-width:82px}}
 
+
+/* v0.5.3 - avatar de perfil */
+.profile-avatar-large{overflow:hidden;position:relative}
+.profile-avatar-large img,.profile-avatar-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.profile-avatar-large img[hidden],.profile-avatar-preview img[hidden]{display:none}
+.profile-avatar-large span,.profile-avatar-preview span{display:grid;place-items:center;width:100%;height:100%}
+.profile-avatar-settings{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center;padding:12px;border:1px solid #30343e;border-radius:14px;background:#17191f;margin:0 0 14px}
+.profile-avatar-preview{width:64px;height:64px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:linear-gradient(145deg,#31284d,#4b3b79);border:2px solid rgba(216,255,98,.65);font-weight:900;color:#fff}
+.profile-avatar-settings>div:last-of-type{min-width:0;display:grid;gap:4px}
+.profile-avatar-settings strong{font-size:.84rem;color:#f4f5f8}
+.profile-avatar-settings small{font-size:.67rem;line-height:1.35;color:#aeb4c0}
+.profile-avatar-upload-button{justify-self:start;margin-top:5px;border:0;border-radius:10px;padding:8px 11px;background:#805cff;color:#fff;font-weight:800;font-size:.72rem;cursor:pointer}
+.profile-avatar-upload-button:disabled{opacity:.55;cursor:wait}
+
+/* v0.5.4 group owner destructive action */
+.social-group-actions .social-danger-action {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  border-radius: 14px;
+  background: rgba(127, 29, 29, 0.14);
+  color: #fecaca;
+  font-weight: 800;
+  cursor: pointer;
+}
+.social-group-actions .social-danger-action:hover,
+.social-group-actions .social-danger-action:focus-visible {
+  background: rgba(127, 29, 29, 0.24);
+  border-color: rgba(248, 113, 113, 0.7);
+}

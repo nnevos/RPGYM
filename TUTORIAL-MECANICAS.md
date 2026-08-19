@@ -1,4 +1,4 @@
-# RPG GYM v0.3 — Tutorial de Alterações Mecânicas
+# RPG GYM v0.6 — Tutorial de Alterações Mecânicas
 
 Este arquivo explica **onde e como alterar as regras do jogo** sem precisar mexer na interface visual. Ele serve como guia para manutenção, balanceamento e expansão do RPG GYM.
 
@@ -1816,3 +1816,38 @@ Cada rota de atributo possui 10 capítulos, nos níveis 5, 10, 15, 20, 25, 30, 3
 - **Futuro:** ainda depende de nível e/ou objetivos.
 
 Os níveis terminados em 5 são **marcos**. Os níveis 10, 20, 30, 40 e 50 são **evoluções de classe**. A trilha da classe mostra I → II → III → IV → Mestre. Essa apresentação não muda os requisitos mecânicos: nível + objetivos do capítulo continuam necessários.
+
+## Social — criar, entrar e sair de grupos (v0.5.4)
+
+O Social usa uma associação de grupo por usuário. A interface lê `groups`, `group_members` e `social_profiles`, mas a criação e a saída passam por funções SQL para manter a operação consistente.
+
+- `create_social_group(name, description, focus)` cria o grupo e o vínculo `owner` na mesma operação.
+- `leave_social_group(group_id)` remove o vínculo do usuário. Se ele for o dono, a função transfere a propriedade para outro integrante; se for o último membro, remove o grupo.
+- A home do Social mostra um cartão do grupo atual + feed de atividade recente. A lista completa de participantes só é carregada ao abrir o grupo.
+- O perfil social continua separado do save privado. Comparações usam apenas exercícios em comum presentes no snapshot social.
+
+Para alterar regras de criação/saída, edite `supabase/v0.5.4-groups.sql` e crie uma nova migração em vez de sobrescrever uma migração já aplicada em produção.
+
+
+---
+
+## v0.6 — estabilidade, conta e produto
+
+| Função | Arquivo |
+|---|---|
+| Sincronização nuvem/offline/conflitos | `js/core/cloud-sync.js` |
+| Backup, importação, correção histórica e tratamento de erros | `js/core/stability.js` |
+| Troca de senha e exclusão de conta | `js/core/account-security.js` |
+| Instalação PWA | `js/core/pwa.js` |
+| Cache offline | `service-worker.js` |
+| Manifesto instalável | `manifest.webmanifest` |
+| Segurança Supabase v0.6 | `supabase/v0.6.0-beta.sql` |
+
+### Regra de conflito de save
+O app registra o horário da última sincronização conhecida. Se o save local e o da nuvem tiverem sido modificados independentemente desde esse ponto, o usuário escolhe qual versão manter. Não altere essa decisão para “o mais novo sempre vence” sem considerar perda de dados em dois dispositivos.
+
+### Correções históricas
+Na v0.6, corrigir histórico recalcula estatísticas derivadas, mas preserva o XP já concedido. Isso impede que edição retroativa vire uma ferramenta de farm ou perda acidental de níveis. Se no futuro você implementar um ledger de XP imutável por evento, aí será possível recalcular XP histórico com segurança.
+
+### Service Worker
+Sempre altere `CACHE_NAME` em `service-worker.js` quando publicar uma versão que precise invalidar arquivos antigos. Não coloque respostas privadas do Supabase no cache do Service Worker.

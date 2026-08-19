@@ -402,8 +402,15 @@ function readActivityOptions(activityId) {
     case "cardio": {
       const type = pendingCardioRecord?.type || document.getElementById("cardioMode")?.value || "treadmill";
       const config = CARDIO_TYPES[type] || CARDIO_TYPES.treadmill;
-      const values = pendingCardioRecord?.values || {};
+      const values = { ...(pendingCardioRecord?.values || {}) };
       const minutes = pendingCardioRecord?.minutes || Math.max(1, getCurrentCardioElapsedMs() / 60000);
+      // Para modalidades baseadas em distância, a velocidade média deve vir dos
+      // dados objetivos da sessão, não de um campo digitado pelo usuário.
+      // km / horas = km/h. Mantemos `speed` no objeto para compatibilidade com
+      // regras de performance, histórico e saves antigos.
+      if (Number(values.distance) > 0 && minutes > 0 && ["treadmill", "outdoor_run", "stationary_bike", "outdoor_bike", "elliptical"].includes(type)) {
+        values.speed = Number(values.distance) / (minutes / 60);
+      }
       return { type, mode: config.attribute, minutes, ...values };
     }
     case "meal":

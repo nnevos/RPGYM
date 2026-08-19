@@ -36,25 +36,78 @@ function formatCardioDuration(ms) {
     : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+
+function parseCardioDurationInput(value) {
+  const text = String(value || "").trim();
+  if (!text) return 0;
+  if (/^\d+(?:[.,]\d+)?$/.test(text)) return Math.max(0, Number(text.replace(",", ".")) * 60);
+  const parts = text.split(":").map((part) => Number(part));
+  if (parts.some((part) => !Number.isFinite(part) || part < 0)) return 0;
+  if (parts.length === 2) return (parts[0] * 60) + Math.min(59, parts[1]);
+  if (parts.length === 3) return (parts[0] * 3600) + (Math.min(59, parts[1]) * 60) + Math.min(59, parts[2]);
+  return 0;
+}
+
+function applyManualCardioDuration(rawValue) {
+  if (!pendingCardioRecord) return false;
+  const seconds = parseCardioDurationInput(rawValue);
+  if (!(seconds > 0) || seconds > 24 * 3600) return false;
+  cardioTimerElapsedMs = Math.round(seconds * 1000);
+  cardioTimerStartedAt = null;
+  cardioTimerPaused = true;
+  pendingCardioRecord.minutes = seconds / 60;
+  setText("cardioConfirmTime", formatCardioDuration(cardioTimerElapsedMs));
+  updateCardioTimerDisplay();
+  return true;
+}
+
+function getCardioCalculatedMetrics(options = {}) {
+  const minutes = Math.max(0, Number(options.minutes) || 0);
+  const distanceKm = Math.max(0, Number(options.distance) || 0);
+  const distanceMeters = Math.max(0, Number(options.distanceMeters) || 0);
+  const metrics = {};
+  if (minutes > 0 && distanceKm > 0) metrics.speedKmh = distanceKm / (minutes / 60);
+  if (minutes > 0 && distanceMeters > 0) metrics.speedKmh = (distanceMeters / 1000) / (minutes / 60);
+  if (minutes > 0 && Number(options.floors) > 0) metrics.floorsPerMinute = Number(options.floors) / minutes;
+  if (minutes > 0 && Number(options.jumps) > 0) metrics.jumpsPerMinute = Number(options.jumps) / minutes;
+  return metrics;
+}
+
 function getCardioDerivedMetric(options) {
   const minutes = Number(options.minutes) || 0;
   const distance = Number(options.distance) || 0;
   const distanceMeters = Number(options.distanceMeters) || 0;
-  if ((options.type === "outdoor_run" || options.type === "treadmill") && distance > 0 && minutes > 0) {
+  if (["outdoor_run", "treadmill"].includes(options.type) && distance > 0 && minutes > 0) {
+    const speed = distance / (minutes / 60);
     const pace = minutes / distance;
     const whole = Math.floor(pace);
-    const seconds = Math.round((pace - whole) * 60);
-    return `${whole}:${String(seconds).padStart(2, "0")} min/km`;
+    let seconds = Math.round((pace - whole) * 60);
+    let paceMinutes = whole;
+    if (seconds === 60) { paceMinutes += 1; seconds = 0; }
+    const paceText = `${paceMinutes}:${String(seconds).padStart(2, "0")} min/km`;
+    return `${formatDecimal(speed, 1)} km/h méd. • ${paceText}`;
   }
-  if (options.type === "outdoor_bike" && distance > 0 && minutes > 0) {
+  if (["stationary_bike", "outdoor_bike", "elliptical"].includes(options.type) && distance > 0 && minutes > 0) {
     return `${formatDecimal(distance / (minutes / 60), 1)} km/h méd.`;
   }
   if (options.type === "rowing" && distanceMeters > 0 && minutes > 0) {
     const splitMinutes = minutes / (distanceMeters / 500);
     const whole = Math.floor(splitMinutes);
-    const seconds = Math.round((splitMinutes - whole) * 60);
-    return `${whole}:${String(seconds).padStart(2, "0")} /500m`;
+    let seconds = Math.round((splitMinutes - whole) * 60);
+    let splitWhole = whole;
+    if (seconds === 60) { splitWhole += 1; seconds = 0; }
+    return `${splitWhole}:${String(seconds).padStart(2, "0")} /500m`;
   }
+  if (options.type === "swimming" && distanceMeters > 0 && minutes > 0) {
+    const pace100 = minutes / (distanceMeters / 100);
+    const whole = Math.floor(pace100);
+    let seconds = Math.round((pace100 - whole) * 60);
+    let paceWhole = whole;
+    if (seconds === 60) { paceWhole += 1; seconds = 0; }
+    return `${paceWhole}:${String(seconds).padStart(2, "0")} /100m`;
+  }
+  if (options.type === "stair_climber" && Number(options.floors) > 0 && minutes > 0) return `${formatDecimal(Number(options.floors) / minutes, 1)} andares/min`;
+  if (options.type === "jump_rope" && Number(options.jumps) > 0 && minutes > 0) return `${formatDecimal(Number(options.jumps) / minutes, 0)} saltos/min`;
   return "";
 }
 
@@ -62,17 +115,37 @@ function renderCardioConfirmationFields() {
   const container = document.getElementById("cardioConfirmFields");
   if (!container || !pendingCardioRecord) return;
   const config = CARDIO_TYPES[pendingCardioRecord.type] || CARDIO_TYPES.treadmill;
-  container.innerHTML = config.fields.map((field) => `
+  container.innerHTML = `
+    <label class="cardio-confirm-field cardio-time-edit-field">
+      <span>Tempo total <small>(editável)</small></span>
+      <div class="cardio-input-unit">
+        <input data-cardio-duration type="text" inputmode="numeric" autocomplete="off" value="${escapeHtml(formatCardioDuration(cardioTimerElapsedMs))}" placeholder="00:30:00" aria-label="Tempo total do cardio">
+        <small>hh:mm:ss</small>
+      </div>
+    </label>` + config.fields.map((field) => `
     <label class="cardio-confirm-field">
       <span>${escapeHtml(field.label)}${field.required ? " *" : ""}</span>
       <div class="cardio-input-unit">
-        <input data-cardio-field="${escapeHtml(field.key)}" type="number" inputmode="decimal" min="${field.min ?? 0}" step="${field.step ?? 1}" placeholder="0" ${field.required ? "required" : ""}>
+        <input data-cardio-field="${escapeHtml(field.key)}" type="number" inputmode="decimal" min="${field.min ?? 0}" ${field.max != null ? `max="${field.max}"` : ""} step="${field.step ?? 1}" placeholder="0" ${field.required ? "required" : ""}>
         <small>${escapeHtml(field.unit)}</small>
       </div>
     </label>`).join("");
+
+  const durationInput = container.querySelector("[data-cardio-duration]");
+  durationInput?.addEventListener("change", () => {
+    if (!applyManualCardioDuration(durationInput.value)) {
+      durationInput.value = formatCardioDuration(cardioTimerElapsedMs);
+      showToast("Tempo inválido", "Use MM:SS ou HH:MM:SS, com no máximo 24 horas.", "!");
+      return;
+    }
+    durationInput.value = formatCardioDuration(cardioTimerElapsedMs);
+    updateCardioConfirmationSummary();
+  });
+
   container.querySelectorAll("[data-cardio-field]").forEach((input) => {
     input.addEventListener("input", () => {
-      pendingCardioRecord.values[input.dataset.cardioField] = Math.max(0, Number(input.value) || 0);
+      const value = Math.max(0, Number(input.value) || 0);
+      pendingCardioRecord.values[input.dataset.cardioField] = value;
       updateCardioConfirmationSummary();
     });
   });
@@ -102,13 +175,47 @@ function updateCardioConfirmationSummary() {
 function validateCardioConfirmation() {
   if (!pendingCardioRecord) return false;
   const config = CARDIO_TYPES[pendingCardioRecord.type] || CARDIO_TYPES.treadmill;
+  const durationInput = document.querySelector("[data-cardio-duration]");
+  if (durationInput && !applyManualCardioDuration(durationInput.value)) {
+    durationInput.focus();
+    showToast("Tempo inválido", "Informe um tempo maior que zero em MM:SS ou HH:MM:SS.", "!");
+    return false;
+  }
   for (const field of config.fields) {
-    if (field.required && !(Number(pendingCardioRecord.values[field.key]) > 0)) {
+    const value = Number(pendingCardioRecord.values[field.key]) || 0;
+    if (field.required && !(value > 0)) {
       const input = document.querySelector(`[data-cardio-field="${field.key}"]`);
       input?.focus();
       showToast("Dado necessário", `Informe ${field.label.toLowerCase()} para concluir o registro.`, "!");
       return false;
     }
+    if (field.max != null && value > Number(field.max)) {
+      const input = document.querySelector(`[data-cardio-field="${field.key}"]`);
+      input?.focus();
+      showToast("Valor fora do limite", `${field.label} está acima do limite aceito para este registro.`, "!");
+      return false;
+    }
+  }
+
+  const options = readActivityOptions("cardio");
+  const metrics = getCardioCalculatedMetrics(options);
+  const limits = config.limits || {};
+  if (limits.maxSpeedKmh && metrics.speedKmh > limits.maxSpeedKmh) {
+    showToast("Velocidade incompatível", `Distância e tempo resultam em ${formatDecimal(metrics.speedKmh, 1)} km/h. Revise os dados da sessão.`, "!");
+    durationInput?.focus();
+    return false;
+  }
+  if (limits.maxFloorsPerMinute && metrics.floorsPerMinute > limits.maxFloorsPerMinute) {
+    showToast("Ritmo incompatível", `O registro resulta em ${formatDecimal(metrics.floorsPerMinute, 1)} andares/min. Revise tempo ou andares.`, "!");
+    return false;
+  }
+  if (limits.maxJumpsPerMinute && metrics.jumpsPerMinute > limits.maxJumpsPerMinute) {
+    showToast("Cadência incompatível", `O registro resulta em ${formatDecimal(metrics.jumpsPerMinute, 0)} saltos/min. Revise tempo ou saltos.`, "!");
+    return false;
+  }
+  if (limits.maxRpm && Number(options.rpm) > limits.maxRpm) {
+    showToast("Cadência incompatível", `A cadência informada está acima de ${limits.maxRpm} RPM.`, "!");
+    return false;
   }
   return true;
 }

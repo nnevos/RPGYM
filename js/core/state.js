@@ -14,8 +14,9 @@ function init() {
   hydrateProfileForm();
   updateUI();
   setActiveView("social", false);
-  window.setTimeout(() => openOnboarding(false), 220);
-  window.addEventListener("pagehide", flushScheduledSave, { passive: true });
+  window.addEventListener("pagehide", () => { flushScheduledSave(); if (typeof flushCloudSync === "function") flushCloudSync(); }, { passive: true });
+  if (typeof bootstrapCloudSyncAfterGameInit === "function") bootstrapCloudSyncAfterGameInit();
+  if (typeof scheduleSocialSnapshotSync === "function") scheduleSocialSnapshotSync(500);
 
   window.setInterval(() => {
     const previousDailyKey = state.missions.dailyKey;
@@ -375,7 +376,11 @@ function loadGame() {
   const fallback = createDefaultState();
 
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const storageKey = getGameStorageKey();
+    const cloudState = typeof consumePendingCloudGame === "function" ? consumePendingCloudGame() : null;
+    if (cloudState) return migrateState(cloudState, fallback);
+
+    const stored = localStorage.getItem(storageKey) || claimLegacyStorage(STORAGE_KEY, storageKey);
     if (!stored) {
       return fallback;
     }
@@ -487,12 +492,15 @@ function migrateState(rawState, fallback = createDefaultState()) {
 }
 
 function saveGame() {
+  if (state) state.lastSavedAt = new Date().toISOString();
   if (pendingSaveTimer) {
     window.clearTimeout(pendingSaveTimer);
     pendingSaveTimer = null;
   }
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(getGameStorageKey(), JSON.stringify(state));
+    if (typeof scheduleCloudSync === "function") scheduleCloudSync();
+    if (typeof scheduleSocialSnapshotSync === "function") scheduleSocialSnapshotSync();
     return true;
   } catch (error) {
     console.warn("Não foi possível salvar o progresso.", error);

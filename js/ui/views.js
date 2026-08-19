@@ -438,7 +438,25 @@ function missionRewardLabel(reward) {
 
 function renderCharacter() {
   const initials = getInitials(state.player.name);
-  setText("characterAvatar", initials);
+  const avatarUrl = authProfile?.avatar_url || "";
+  const avatarImage = document.getElementById("characterAvatarImage");
+  const avatarInitials = document.getElementById("characterAvatarInitials");
+  if (avatarImage) {
+    avatarImage.hidden = !avatarUrl;
+    if (avatarUrl && avatarImage.src !== avatarUrl) avatarImage.src = avatarUrl;
+  }
+  if (avatarInitials) {
+    avatarInitials.hidden = Boolean(avatarUrl);
+    avatarInitials.textContent = initials;
+  }
+  setText("profileAvatarPreviewInitials", initials);
+  const preview = document.getElementById("profileAvatarPreviewImage");
+  if (preview) {
+    preview.hidden = !avatarUrl;
+    if (avatarUrl && preview.src !== avatarUrl) preview.src = avatarUrl;
+  }
+  const previewInitials = document.getElementById("profileAvatarPreviewInitials");
+  if (previewInitials) previewInitials.hidden = Boolean(avatarUrl);
   setText("profilePlayerName", state.player.name || "Jogador");
   setText("characterHeading", "Meu Perfil");
   setText("characterTitle", state.player.title || "Novato");
@@ -910,7 +928,17 @@ function saveProfile(event) {
   state.profile.frequency = frequency;
   saveGame();
   updateUI();
-  showToast("Perfil atualizado", "Suas alterações foram salvas localmente.", "✓");
+
+  if (typeof syncSupabaseProfileFromGame === "function") {
+    syncSupabaseProfileFromGame()
+      .then(() => showToast("Perfil atualizado", "Alterações salvas neste dispositivo e no seu perfil Supabase.", "✓"))
+      .catch((error) => {
+        console.warn("Falha ao sincronizar perfil Supabase", error);
+        showToast("Perfil salvo localmente", "Não foi possível atualizar a conta Supabase agora.", "⚠");
+      });
+  } else {
+    showToast("Perfil atualizado", "Suas alterações foram salvas localmente.", "✓");
+  }
 }
 
 function renderCardioHistory() {
@@ -1006,7 +1034,7 @@ function historyEntryMarkup(entry) {
         <strong>${escapeHtml(entry.activityName || "Atividade")}</strong>
         <small>${escapeHtml(details)}</small>
       </div>
-      <span class="history-xp">+${formatNumber(entry.xp || 0)} XP</span>
+      <div class="history-actions"><span class="history-xp">+${formatNumber(entry.xp || 0)} XP</span><button class="history-edit-button" type="button" data-edit-history="${escapeHtml(entry.id || "")}" aria-label="Editar registro">Editar</button></div>
     </article>
   `;
 }

@@ -1,77 +1,40 @@
-# RPG GYM v0.4.4
+# RPG GYM v0.6.0
 
-A v0.4.4 é uma refatoração técnica. Ela mantém as mecânicas e o visual da v0.4.3, mas reduz trabalho desnecessário no navegador e deixa a base mais simples de manter.
+Beta utilizável por amigos. O projeto continua em HTML, CSS e JavaScript puro, com Supabase para autenticação, save e recursos sociais.
 
-O projeto continua sem frameworks e pode ser executado abrindo `index.html` diretamente no navegador.
+## Rodar
+Para desenvolvimento local, use um servidor HTTP em vez de abrir `index.html` diretamente:
 
-## Estrutura
-
-```text
-RPG-GYM/
-├── index.html
-├── README.md
-├── TUTORIAL-MECANICAS.md
-├── css/
-│   ├── base.css
-│   ├── product.css
-│   ├── systems.css
-│   └── polish.css
-├── js/
-│   ├── app.js
-│   ├── config/
-│   ├── core/
-│   ├── data/
-│   ├── systems/
-│   └── ui/
-└── tools/
+```bash
+python3 -m http.server 8080
 ```
 
-### CSS
+Depois abra `http://localhost:8080`.
 
-Os estilos foram separados mantendo a mesma ordem de cascata da versão anterior:
+Para amigos, publique a pasta inteira em um host HTTPS (Netlify, Vercel, GitHub Pages ou equivalente) e configure a URL publicada em Supabase > Authentication > URL Configuration.
 
-- `base.css`: fundação visual e estilos antigos de base;
-- `product.css`: linguagem visual do produto e componentes estruturais;
-- `systems.css`: estilos específicos dos sistemas Treino, Cardio, Dieta e RPG;
-- `polish.css`: ajustes finais de UX, responsividade e acessibilidade.
+## Supabase
+A configuração pública já fica em `js/config/supabase-config.js`. Nunca coloque `service_role` ou `sb_secret_...` no frontend.
 
-A ordem dos quatro `<link>` em `index.html` é intencional. Não altere a ordem sem revisar a cascata.
+Se você já executou todos os SQLs da v0.5.x, execute somente:
 
-### JavaScript
+`supabase/v0.6.0-beta.sql`
 
-- `js/data/`: bases estáticas grandes de exercícios e alimentos;
-- `js/config/`: balanceamento e conteúdo configurável;
-- `js/core/`: save, stats, XP, missões, roadmaps, runtime e utilitários;
-- `js/systems/`: Treino, Cardio, Dieta e Social;
-- `js/ui/`: renderização, interações, modais e navegação;
-- `js/app.js`: entrada da aplicação.
+Ele adiciona a exclusão segura de conta, reafirma grants/RLS usados pelo navegador e endurece o limite do bucket de avatares.
 
-## Otimizações da v0.4.4
+## Estrutura
+- `css/` — visual e responsividade.
+- `js/config/` — balanceamento e configuração.
+- `js/core/` — estado, autenticação, sincronização, estabilidade, conta e PWA.
+- `js/systems/` — treino, cardio, dieta e social.
+- `js/data/` — exercícios e alimentos.
+- `supabase/` — migrações SQL.
+- `service-worker.js` / `manifest.webmanifest` — PWA e cache offline.
 
-- exercícios e alimentos possuem índices `Map` para consultas por ID em O(1), evitando vários `Array.find()` durante renderizações;
-- filtros de músculo/equipamento e agrupamentos de alimentos comuns são pré-calculados uma vez na inicialização;
-- textos normalizados de pesquisa são pré-indexados, reduzindo trabalho a cada tecla digitada;
-- busca de exercícios, alimentos e grupos utiliza debounce curto;
-- alterações rápidas em carga, reps, notas e nome do treino usam salvamento agrupado, reduzindo gravações repetidas no `localStorage`;
-- o save pendente é descarregado ao sair da página;
-- `updateUI()` renderiza somente a tela ativa em vez de reconstruir todas as telas escondidas;
-- ao navegar, a tela de destino é atualizada naquele momento, preservando dados atuais sem custo de renderização invisível.
+## v0.6
+A versão fecha três frentes:
+- estabilidade/sincronização: conflitos, modo offline, backup e correção histórica;
+- conta/segurança: senha, exclusão de conta, RLS e upload restrito;
+- produto: PWA, instalação e polimento mobile.
 
-## Onde alterar o RPG
-
-- Curva, XP e anti-farm: `js/config/balance-config.js`
-- Atributos e classes: `js/config/game-config.js`
-- Missões: `js/config/mission-data.js`
-- Roadmaps: `js/config/roadmap-data.js`
-- Conquistas: `js/config/achievement-data.js`
-- Cardio multiatributo: `js/config/cardio-data.js`
-
-Para alterações mecânicas detalhadas, consulte `TUTORIAL-MECANICAS.md`.
-
-## Regra de manutenção
-
-Valores de balanceamento devem ficar em `js/config/` sempre que possível. `js/core/` interpreta as regras, `js/systems/` registra as atividades e `js/ui/` apresenta o resultado. Evite colocar números de balanceamento diretamente na camada visual.
-
-## Compatibilidade
-
-A v0.4.4 não muda a estrutura funcional do save nem o balanceamento da v0.4.3. Saves existentes continuam sendo migrados normalmente pelo sistema atual.
+Leia `BETA-CHECKLIST.md` antes de liberar para outras pessoas.

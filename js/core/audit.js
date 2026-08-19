@@ -7,7 +7,7 @@ const BALANCE_AUDIT_LIMIT = 300;
 
 function loadBalanceAuditLog() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(BALANCE_AUDIT_STORAGE_KEY) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(getScopedStorageKey(BALANCE_AUDIT_STORAGE_KEY)) || "[]");
     return Array.isArray(parsed) ? parsed.slice(0, BALANCE_AUDIT_LIMIT) : [];
   } catch (_error) {
     return [];
@@ -16,7 +16,7 @@ function loadBalanceAuditLog() {
 
 function saveBalanceAuditLog(log) {
   try {
-    localStorage.setItem(BALANCE_AUDIT_STORAGE_KEY, JSON.stringify((log || []).slice(0, BALANCE_AUDIT_LIMIT)));
+    localStorage.setItem(getScopedStorageKey(BALANCE_AUDIT_STORAGE_KEY), JSON.stringify((log || []).slice(0, BALANCE_AUDIT_LIMIT)));
   } catch (_error) {
     // A auditoria nunca pode impedir o funcionamento do jogo.
   }
@@ -45,7 +45,7 @@ function recordXpAudit(attributeKey, amount, source = "Atividade", metadata = {}
 }
 
 function clearBalanceAuditLog() {
-  localStorage.removeItem(BALANCE_AUDIT_STORAGE_KEY);
+  localStorage.removeItem(getScopedStorageKey(BALANCE_AUDIT_STORAGE_KEY));
   renderBalanceAuditPanel();
 }
 

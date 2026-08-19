@@ -16,7 +16,7 @@ function toggleCardioPanels(running) {
 const HELP_CONTENT = {
   social: {
     title: "Área Social",
-    html: `<p>A área Social reúne grupo, desafios e progresso compartilhado.</p><ul><li>Acompanhe missões rápidas.</li><li>Veja companheiros e grupos.</li><li>Recursos sociais maiores podem ser conectados a um backend no futuro.</li></ul>`
+    html: `<p>O Social conecta sua conta a grupos do RPG GYM.</p><ul><li>Pesquise e entre em um grupo.</li><li>Veja integrantes e registros recentes quase em tempo real.</li><li>Abra o perfil de um integrante para comparar atributos.</li><li>Quando vocês usam os mesmos exercícios, o app compara os melhores registros salvos.</li></ul><p class="help-tip">Somente informações de progresso necessárias para o grupo são compartilhadas. Dados privados do perfil e o save completo continuam protegidos.</p>`
   },
   training: {
     title: "Como registrar treino",
@@ -132,6 +132,24 @@ function bindEvents() {
     const socialMemberButton = event.target.closest("[data-social-member]");
     if (socialMemberButton) { openSocialMember(socialMemberButton.dataset.socialMember); return; }
 
+    const socialOpenSearchButton = event.target.closest("[data-social-open-search]");
+    if (socialOpenSearchButton) { openSocialSearch(); return; }
+
+    const socialBackSearchButton = event.target.closest("[data-social-back-search]");
+    if (socialBackSearchButton) { openSocialSearch(); return; }
+
+    const socialCreateButton = event.target.closest("#socialCreateGroupButton, [data-social-create-direct]");
+    if (socialCreateButton) { openSocialCreateGroup(); return; }
+
+    const socialJoinButton = event.target.closest("[data-social-join-group]");
+    if (socialJoinButton) { joinSocialGroup(socialJoinButton.dataset.socialJoinGroup); return; }
+
+    const socialLeaveButton = event.target.closest("[data-social-leave-group]");
+    if (socialLeaveButton) { leaveSocialGroup(); return; }
+
+    const socialDeleteButton = event.target.closest("[data-social-delete-group]");
+    if (socialDeleteButton) { deleteSocialGroup(socialDeleteButton.dataset.socialDeleteGroup); return; }
+
     const activityButton = event.target.closest("[data-register-activity]");
     if (activityButton) {
       registerActivity(activityButton.dataset.registerActivity);
@@ -216,8 +234,9 @@ function bindEvents() {
     ?.addEventListener("click", () => setActiveView("training"));
 
   document.getElementById("socialSearchToggle")?.addEventListener("click", openSocialSearch);
-  document.getElementById("socialSeeGroup")?.addEventListener("click", () => openSocialGroup("agronegocio"));
+  document.getElementById("socialSeeGroup")?.addEventListener("click", () => openSocialGroup(socialCurrentGroup?.id));
   document.getElementById("socialGroupSearch")?.addEventListener("input", debouncedSocialSearch);
+  document.getElementById("socialCreateGroupForm")?.addEventListener("submit", createSocialGroup);
   document.getElementById("startEmptyWorkout")?.addEventListener("click", startEmptyWorkout);
   document.getElementById("createRoutineButton")?.addEventListener("click", () => openRoutineEditor(false));
   document.getElementById("browseExercisesButton")?.addEventListener("click", () => openExercisePicker("browse"));
@@ -346,6 +365,8 @@ function bindEvents() {
     else if (!document.getElementById("exercisePickerOverlay")?.hidden) closeExercisePicker();
     else if (!document.getElementById("routineEditorOverlay")?.hidden) closeRoutineEditor();
     else if (!document.getElementById("helpOverlay")?.hidden) closeHelp();
+    else if (!document.getElementById("accountActionOverlay")?.hidden && typeof closeAccountAction === "function") closeAccountAction();
+    else if (!document.getElementById("historyEditOverlay")?.hidden && typeof closeHistoryEditor === "function") closeHistoryEditor();
     else if (!document.getElementById("profileSettingsOverlay")?.hidden) closeProfileSettings();
     else if (!document.getElementById("dietEditOverlay")?.hidden) closeDietItemEditor();
     else if (!document.getElementById("dietSettingsOverlay")?.hidden) closeDietSettings();
@@ -427,7 +448,7 @@ function setActiveView(viewName, scrollToTop = true) {
 
 function resetProgress() {
   requestConfirmation({title:"Resetar todo o progresso?",message:"Níveis, XP, missões, streak, histórico, rotinas e treinos serão apagados deste navegador. Esta ação não pode ser desfeita.",confirmLabel:"Resetar tudo",cancelLabel:"Cancelar",danger:true,icon:"!",details:[{label:"Nível global",value:state.globalLevel||1},{label:"XP total",value:formatNumber((state.history||[]).reduce((sum,item)=>sum+(Number(item.xp)||0),0))}]},()=>{
-    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(DIET_STORAGE_KEY); } catch (error) { console.warn("Não foi possível limpar o armazenamento.", error); }
+    try { localStorage.removeItem(getGameStorageKey()); localStorage.removeItem(getScopedStorageKey(DIET_STORAGE_KEY)); } catch (error) { console.warn("Não foi possível limpar o armazenamento.", error); }
     state = createDefaultState(); profileHydrated = false; celebrationQueue = []; normalizeTemporalState(); ensureMissions(); refreshMissionProgress(); syncDerivedState(); hydrateProfileForm(); saveGame(); updateUI(); setActiveView("social"); showToast("Progresso resetado", "Uma nova jornada foi iniciada.", "↻");
   });
 }

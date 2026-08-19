@@ -1,7 +1,35 @@
 "use strict";
 
 const STORAGE_KEY = "rpgGymMvp_v1";
-const APP_VERSION = "0.4.4";
+
+function getRpgGymStorageScope() {
+  return String(window.RPG_GYM_AUTH_USER_ID || "local");
+}
+
+function getScopedStorageKey(baseKey) {
+  const scope = getRpgGymStorageScope();
+  return scope === "local" ? baseKey : `${baseKey}:${scope}`;
+}
+
+function claimLegacyStorage(baseKey, scopedKey) {
+  if (scopedKey === baseKey) return null;
+  try {
+    const claimedByKey = `${baseKey}:legacy-claimed-by`;
+    const claimedBy = localStorage.getItem(claimedByKey);
+    if (claimedBy && claimedBy !== getRpgGymStorageScope()) return null;
+    const legacy = localStorage.getItem(baseKey);
+    if (!legacy) return null;
+    if (!claimedBy) localStorage.setItem(claimedByKey, getRpgGymStorageScope());
+    return legacy;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function getGameStorageKey() {
+  return getScopedStorageKey(STORAGE_KEY);
+}
+const APP_VERSION = "0.6.0";
 const MAX_LEVEL = 50;
 const MILESTONE_LEVELS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 const DAY_MS = 86_400_000;

@@ -3,7 +3,8 @@
 function loadDietState() {
   if (dietState) return dietState;
   try {
-    const parsed = JSON.parse(localStorage.getItem(DIET_STORAGE_KEY) || "null");
+    const cloudDiet = typeof consumePendingCloudDiet === "function" ? consumePendingCloudDiet() : null;
+    const parsed = cloudDiet || JSON.parse(localStorage.getItem(getScopedStorageKey(DIET_STORAGE_KEY)) || claimLegacyStorage(DIET_STORAGE_KEY, getScopedStorageKey(DIET_STORAGE_KEY)) || "null");
     dietState = parsed && typeof parsed === "object" ? parsed : { days: {} };
   } catch (error) {
     dietState = { days: {} };
@@ -18,7 +19,9 @@ function loadDietState() {
 
 function saveDietState() {
   try {
-    localStorage.setItem(DIET_STORAGE_KEY, JSON.stringify(loadDietState()));
+    const currentDiet = loadDietState();
+    currentDiet.updatedAt = new Date().toISOString();
+    localStorage.setItem(getScopedStorageKey(DIET_STORAGE_KEY), JSON.stringify(currentDiet));
     if (state) { rebuildStatsFromSources(); saveGame(); }
   }
   catch (error) { console.warn("Não foi possível salvar a dieta localmente.", error); }

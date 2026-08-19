@@ -1591,3 +1591,143 @@ select option { background: #20232b !important; color: var(--text) !important; }
   }
 }
 
+
+/* v0.5.2 Social conectado ao Supabase */
+.social-no-group-card,
+.social-join-hint,
+.social-compare-note {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 16px;
+  background: #1b1d22;
+  color: #d9dce4;
+}
+.social-no-group-card strong { color:#fff; font-size:.86rem; }
+.social-no-group-card span,
+.social-join-hint,
+.social-compare-note { font-size:.7rem; line-height:1.45; color:#aeb3bd; }
+.social-no-group-card button,
+.social-primary-action,
+.social-secondary-action {
+  min-height: 44px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+.social-no-group-card button,
+.social-primary-action {
+  border: 0;
+  background: var(--social-purple-strong);
+  color: #fff;
+}
+.social-secondary-action {
+  border: 1px solid rgba(255,255,255,.1);
+  background: #202229;
+  color: #d7dae1;
+}
+.social-group-actions { display:grid; gap:8px; margin: 0 0 18px; }
+.social-group-member-section { display:grid; gap:10px; }
+.social-feed-block {
+  display:grid;
+  gap:8px;
+  margin-top:18px;
+  padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.07);
+}
+.social-feed-title {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:#f2f3f6;
+}
+.social-feed-title strong { font-size:.78rem; }
+.social-feed-title small { color:#858b98; font-size:.56rem; }
+.social-update-card {
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:13px;
+  background:#202229;
+  color:#fff;
+  text-align:left;
+  cursor:pointer;
+}
+.social-update-card .social-avatar { width:42px; height:42px; font-size:.62rem; }
+.social-update-copy { min-width:0; }
+.social-update-copy strong,
+.social-update-copy b,
+.social-update-copy small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.social-update-copy strong { color:var(--social-lime); font-size:.68rem; }
+.social-update-copy b { margin-top:2px; color:#f3f4f7; font-size:.69rem; }
+.social-update-copy small { margin-top:3px; color:#9da3ae; font-size:.56rem; }
+.social-update-card time { align-self:start; color:#7f8591; font-size:.51rem; white-space:nowrap; }
+.social-compare-section { display:grid; gap:9px; margin-top:18px; }
+.social-compare-row {
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) minmax(82px,.75fr) minmax(82px,.75fr);
+  gap:8px;
+  align-items:center;
+  padding:10px 11px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:13px;
+  background:#202229;
+  color:#fff;
+}
+.social-compare-row > div { min-width:0; }
+.social-compare-row > div strong,
+.social-compare-row > div small,
+.social-compare-row > span small,
+.social-compare-row > span b { display:block; }
+.social-compare-row > div strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.67rem; }
+.social-compare-row > div small,
+.social-compare-row > span small { margin-top:2px; color:#858b98; font-size:.49rem; }
+.social-compare-row > span { min-width:0; text-align:right; }
+.social-compare-row > span b { margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#d9ff3f; font-size:.59rem; }
+
+@media (max-width: 560px) {
+  .social-update-card { grid-template-columns:40px minmax(0,1fr); }
+  .social-update-card time { grid-column:2; justify-self:start; margin-top:-4px; }
+  .social-compare-row { grid-template-columns:minmax(0,1fr) 82px 82px; gap:6px; }
+  .social-compare-row > div strong { font-size:.62rem; }
+  .social-compare-row > span b { font-size:.54rem; }
+}
+
+/* v0.5.3 - fotos no Social */
+.social-avatar.has-image,.social-profile-avatar.has-image{overflow:hidden;padding:0}
+.social-avatar.has-image img,.social-profile-avatar.has-image img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* v0.5.4 - grupos criados pelo usuario e Social unificado */
+.social-search-actions{display:grid;gap:9px;margin-bottom:12px}
+.social-create-group-button{min-height:44px;border:1px solid rgba(179,149,255,.28);border-radius:12px;background:#211d2d;color:#d7c8ff;font:inherit;font-size:.74rem;font-weight:900;cursor:pointer}
+.social-create-group-button[hidden]{display:none!important}
+.social-create-form{display:grid;gap:13px;padding:4px 0 20px}
+.social-create-form label{display:grid;gap:6px;color:#f4f4f7;font-size:.68rem;font-weight:800}
+.social-create-form input,.social-create-form textarea,.social-create-form select{width:100%;min-height:44px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:#181a20;color:#f4f4f7;padding:10px 12px;font:inherit;font-size:.76rem;outline:none}
+.social-create-form textarea{min-height:82px;resize:vertical;line-height:1.4}
+.social-create-form input:focus,.social-create-form textarea:focus,.social-create-form select:focus{border-color:rgba(179,149,255,.7);box-shadow:0 0 0 3px rgba(179,149,255,.09)}
+.social-create-note{margin:0;color:#8d939e;font-size:.62rem;line-height:1.45}
+.social-current-group-card{display:grid;grid-template-columns:50px minmax(0,1fr) auto;align-items:center;gap:11px;width:100%;padding:12px;border:1px solid rgba(179,149,255,.16);border-radius:16px;background:linear-gradient(145deg,#202229,#1b1d22);color:#fff;text-align:left;cursor:pointer}
+.social-current-group-card .social-group-avatar{width:50px;height:50px;font-size:.66rem}
+.social-current-group-copy{min-width:0}
+.social-current-group-copy strong,.social-current-group-copy small,.social-current-group-copy b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.social-current-group-copy strong{font-size:.82rem;color:#f5f3ff}
+.social-current-group-copy small{margin-top:3px;color:#aeb3bd;font-size:.61rem}
+.social-current-group-copy b{margin-top:5px;color:var(--social-lime);font-size:.55rem;font-weight:800}
+.social-current-group-arrow{color:#bba6ff;font-size:1rem;font-weight:900}
+.social-group-feed{margin-top:10px;padding-top:10px}
+.social-group-member-wrap{position:relative}
+.social-group-member-wrap .social-member-card{padding-right:62px}
+.social-role-badge{position:absolute;right:10px;top:10px;padding:4px 7px;border:1px solid rgba(185,255,59,.25);border-radius:999px;background:rgba(185,255,59,.08);color:#d9ff64;font-size:.48rem;font-weight:900;pointer-events:none}
+@media(max-width:560px){.social-current-group-card{grid-template-columns:46px minmax(0,1fr) auto;padding:11px}.social-current-group-card .social-group-avatar{width:46px;height:46px}.social-group-member-wrap .social-member-card{padding-right:54px}.social-role-badge{right:8px;top:8px}}
+.social-no-group-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:3px}
+.social-no-group-actions .social-secondary-action{width:100%}
+@media(max-width:380px){.social-no-group-actions{grid-template-columns:1fr}}
