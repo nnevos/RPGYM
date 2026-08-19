@@ -60,3 +60,8 @@ Regras principais:
 - roadmaps de Força incluem objetivos de PR nos marcos de classe de longo prazo.
 
 Os valores continuam centralizados em `js/config/balance-config.js`.
+
+
+## Cardio com múltiplos atributos (v0.3.4)
+
+O cardio agora usa afinidades em vez de uma relação rígida 1:1 entre atividade e atributo. A duração/endurance alimenta o atributo primário; uma característica secundária mensurável pode gerar uma parcela menor de XP (máximo configurado de 30% da base primária). Exemplos: corrida/esteira = Constituição + Agilidade; remo/escada = Constituição + Força; corda = Agilidade + Constituição. O XP secundário só aparece quando a modalidade atende aos critérios de performance definidos em `js/config/cardio-data.js`. PRs de performance são direcionados ao atributo que representa aquela performance quando apropriado.

@@ -82,12 +82,16 @@ function updateCardioConfirmationSummary() {
   if (!pendingCardioRecord) return;
   const options = readActivityOptions("cardio");
   const calculation = calculateActivityXp("cardio", options);
-  setText("cardioConfirmXp", `${formatNumber(calculation.xp)} XP`);
+  const awardText = Array.isArray(calculation.awards) && calculation.awards.length > 1
+    ? calculation.awards.map((award) => `${ATTRIBUTES[award.attributeKey].name} +${formatNumber(award.xp)}`).join(" • ")
+    : `${formatNumber(calculation.xp)} XP`;
+  setText("cardioConfirmXp", awardText);
   const derived = getCardioDerivedMetric(options);
   const note = document.getElementById("cardioConfirmNote");
   if (note) {
     const parts = [];
     if (derived) parts.push(`Calculado automaticamente: ${derived}.`);
+    if (Array.isArray(calculation.awards) && calculation.awards.length > 1) parts.push("Esta sessão gera XP em mais de um atributo porque combina endurance com uma característica secundária mensurável.");
     if (calculation.performance?.isPr) parts.push(`${calculation.performance.label}: novo recorde pessoal (+${BALANCE.cardio.performanceBonus} XP base).`);
     else if (calculation.performance?.label === "Referência inicial") parts.push("Esta sessão cria sua primeira referência de performance para este cardio.");
     if ((calculation.categoryMultiplier || 1) < 1) parts.push(`Sessão repetida hoje: ${Math.round(calculation.categoryMultiplier * 100)}% do XP da categoria.`);

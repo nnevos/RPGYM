@@ -53,11 +53,53 @@ function syncDerivedState() {
   state.player.title = getCurrentGlobalTitle();
 }
 
+function getCardioAffinities(type) {
+  const config = CARDIO_TYPES[type] || CARDIO_TYPES.treadmill;
+  const affinities = config.affinities || { primary: config.attribute || "constitution" };
+  return {
+    primary: affinities.primary || config.attribute || "constitution",
+    secondary: affinities.secondary || null
+  };
+}
+
 function getActivityAttribute(activityId, options = {}) {
   if (activityId === "cardio") {
-    return CARDIO_TYPES[options.type]?.attribute || options.mode || "constitution";
+    return getCardioAffinities(options.type).primary || options.mode || "constitution";
   }
   return ACTIVITIES[activityId]?.attribute || "constitution";
+}
+
+function isCardioSecondaryEligible(type, options = {}) {
+  const secondary = getCardioAffinities(type).secondary;
+  if (!secondary) return false;
+  const rule = secondary.eligibility || {};
+  const minutes = Math.max(0, Number(options.minutes) || 0);
+  const distance = Math.max(0, Number(options.distance) || 0);
+  const distanceMeters = Math.max(0, Number(options.distanceMeters) || 0);
+  const suppliedSpeed = Math.max(0, Number(options.speed) || 0);
+  const derivedSpeed = distance > 0 && minutes > 0 ? distance / (minutes / 60) : 0;
+  const speed = suppliedSpeed || derivedSpeed;
+  const rpm = Math.max(0, Number(options.rpm) || 0);
+  if (rule.minMinutes && minutes < rule.minMinutes) return false;
+  if (rule.minSpeedKmh && speed < rule.minSpeedKmh) return false;
+  if (rule.minRpm && rpm < rule.minRpm) return false;
+  if (rule.minDistanceMeters && distanceMeters < rule.minDistanceMeters) return false;
+  return true;
+}
+
+function getXpBonusBreakdown(attributeKey, activity) {
+  const attribute = state.attributes[attributeKey];
+  const breakdown = [];
+  const levelBonus = Math.min(BALANCE.bonuses.levelCap, attribute.level * BALANCE.bonuses.levelPerLevel);
+  if (levelBonus > 0) breakdown.push({ label: `Nível de ${ATTRIBUTES[attributeKey].name}`, value: levelBonus });
+  const classBonus = getClassBonus(attributeKey);
+  if (classBonus > 0) breakdown.push({ label: ATTRIBUTES[attributeKey].className, value: classBonus });
+  const intelligenceHabitBonus = getIntelligenceHabitBonus(activity);
+  if (intelligenceHabitBonus > 0) breakdown.push({ label: "Mago mestre", value: intelligenceHabitBonus });
+  getActiveBuffs().forEach((buff) => breakdown.push({ label: buff.source || "Buff semanal", value: Math.max(0, Number(buff.multiplier) - 1) }));
+  const rawBonus = breakdown.reduce((sum, item) => sum + item.value, 0);
+  const appliedBonus = Math.min(BALANCE.bonuses.totalCap, rawBonus);
+  return { breakdown, rawBonus, appliedBonus, capped: rawBonus > BALANCE.bonuses.totalCap };
 }
 
 
@@ -149,17 +191,13 @@ function evaluateCardioPerformance(options = {}) {
 
 function calculateActivityXp(activityId, options = {}) {
   const activity = ACTIVITIES[activityId];
-  if (!activity) {
-    throw new Error(`Atividade desconhecida: ${activityId}`);
-  }
+  if (!activity) throw new Error(`Atividade desconhecida: ${activityId}`);
 
   const attributeKey = getActivityAttribute(activityId, options);
-  const attribute = state.attributes[attributeKey];
   let baseXp = activity.baseXp;
-  const breakdown = [];
-
   let categoryMultiplier = 1;
   let performance = null;
+  let awards = null;
 
   if (activityId === "cardio") {
     const minutes = Math.max(1 / 60, Number(options.minutes) || 1 / 60);
@@ -170,59 +208,49 @@ function calculateActivityXp(activityId, options = {}) {
     const first30 = Math.min(minutes, 30) * cfg.first30PerMinute;
     const next30 = Math.max(0, Math.min(minutes - 30, 30)) * cfg.minute31to60;
     const after60 = Math.max(0, minutes - 60) * cfg.after60PerMinute;
+    const enduranceBase = completionXp + first30 + next30 + after60 + (distanceKm * cfg.distanceBonusPerKm);
     performance = evaluateCardioPerformance(options);
     categoryMultiplier = getSameCategoryDailyMultiplier("cardio");
-    baseXp = (completionXp + first30 + next30 + after60 + (distanceKm * cfg.distanceBonusPerKm) + performance.bonusXp) * categoryMultiplier;
-    baseXp = Math.round(baseXp);
+
+    const affinities = getCardioAffinities(options.type);
+    const primaryBonus = getXpBonusBreakdown(affinities.primary, activity);
+    const secondaryEligible = affinities.secondary && isCardioSecondaryEligible(options.type, options);
+    const performanceToSecondary = Boolean(secondaryEligible && affinities.secondary.performanceTarget);
+    const primaryRaw = (enduranceBase + (performanceToSecondary ? 0 : performance.bonusXp)) * categoryMultiplier;
+    const primaryXp = Math.max(1, Math.round(primaryRaw * (1 + primaryBonus.appliedBonus)));
+
+    awards = [{
+      attributeKey: affinities.primary, role: "primary", xp: primaryXp,
+      baseXp: Math.round(primaryRaw), ...primaryBonus
+    }];
+
+    if (secondaryEligible) {
+      const ratio = Math.min(BALANCE.cardio.secondaryAttributeMaxRatio ?? 0.30, Math.max(0, Number(affinities.secondary.ratio) || 0));
+      const secondaryBaseBeforeMultiplier = (enduranceBase * ratio) + (performanceToSecondary ? performance.bonusXp : 0);
+      const secondaryRaw = secondaryBaseBeforeMultiplier * categoryMultiplier;
+      const secondaryBonus = getXpBonusBreakdown(affinities.secondary.attribute, activity);
+      const secondaryXp = Math.max(1, Math.round(secondaryRaw * (1 + secondaryBonus.appliedBonus)));
+      awards.push({
+        attributeKey: affinities.secondary.attribute, role: "secondary", xp: secondaryXp,
+        baseXp: Math.round(secondaryRaw), ...secondaryBonus
+      });
+    }
+
+    const totalXp = awards.reduce((sum, award) => sum + award.xp, 0);
+    const totalBase = awards.reduce((sum, award) => sum + award.baseXp, 0);
+    return {
+      xp: totalXp, baseXp: totalBase, rawBonus: primaryBonus.rawBonus, appliedBonus: primaryBonus.appliedBonus,
+      capped: awards.some((award) => award.capped), breakdown: primaryBonus.breakdown, attributeKey: affinities.primary,
+      categoryMultiplier, performance, awards
+    };
   }
 
-  const levelBonus = Math.min(BALANCE.bonuses.levelCap, attribute.level * BALANCE.bonuses.levelPerLevel);
-  if (levelBonus > 0) {
-    breakdown.push({
-      label: `Nível de ${ATTRIBUTES[attributeKey].name}`,
-      value: levelBonus
-    });
-  }
-
-  const classBonus = getClassBonus(attributeKey);
-  if (classBonus > 0) {
-    breakdown.push({
-      label: ATTRIBUTES[attributeKey].className,
-      value: classBonus
-    });
-  }
-
-  if (activityId === "heavySet" && options.compound) {
-    breakdown.push({ label: "Exercício composto", value: 0.10 });
-  }
-
-  const intelligenceHabitBonus = getIntelligenceHabitBonus(activity);
-  if (intelligenceHabitBonus > 0) {
-    breakdown.push({ label: "Mago mestre", value: intelligenceHabitBonus });
-  }
-
-  getActiveBuffs().forEach((buff) => {
-    breakdown.push({
-      label: buff.source || "Buff semanal",
-      value: Math.max(0, Number(buff.multiplier) - 1)
-    });
-  });
-
-  const rawBonus = breakdown.reduce((sum, item) => sum + item.value, 0);
+  const bonus = getXpBonusBreakdown(attributeKey, activity);
+  if (activityId === "heavySet" && options.compound) bonus.breakdown.push({ label: "Exercício composto", value: 0.10 });
+  const rawBonus = bonus.breakdown.reduce((sum, item) => sum + item.value, 0);
   const appliedBonus = Math.min(BALANCE.bonuses.totalCap, rawBonus);
   const xp = Math.max(1, Math.round(baseXp * (1 + appliedBonus)));
-
-  return {
-    xp,
-    baseXp,
-    rawBonus,
-    appliedBonus,
-    capped: rawBonus > BALANCE.bonuses.totalCap,
-    breakdown,
-    attributeKey,
-    categoryMultiplier,
-    performance
-  };
+  return { xp, baseXp, rawBonus, appliedBonus, capped: rawBonus > BALANCE.bonuses.totalCap, breakdown: bonus.breakdown, attributeKey, categoryMultiplier, performance, awards: null };
 }
 
 function getClassBonus(attributeKey) {
@@ -271,11 +299,14 @@ function registerActivity(activityId) {
   const calculation = calculateActivityXp(activityId, options);
   const now = new Date();
   const effectiveAttribute = calculation.attributeKey || activity.attribute;
-  const progressEvents = addXP(
-    effectiveAttribute,
-    calculation.xp,
+  const xpAwards = Array.isArray(calculation.awards) && calculation.awards.length
+    ? calculation.awards
+    : [{ attributeKey: effectiveAttribute, xp: calculation.xp, role: "primary" }];
+  const progressEvents = xpAwards.flatMap((award) => addXP(
+    award.attributeKey,
+    award.xp,
     activity.name
-  );
+  ));
 
   const streakUpdate = updateStreak(now);
 
@@ -293,6 +324,7 @@ function registerActivity(activityId) {
     xp: calculation.xp,
     baseXp: calculation.baseXp,
     bonusPercent: calculation.appliedBonus,
+    xpAwards: xpAwards.map((award) => ({ attribute: award.attributeKey, xp: award.xp, role: award.role || "primary" })),
     details,
     ...(activityId === "cardio" ? { cardioData: { ...options }, performance: calculation.performance || null, categoryMultiplier: calculation.categoryMultiplier || 1 } : {}),
     timestamp: now.toISOString(),
@@ -308,11 +340,12 @@ function registerActivity(activityId) {
   saveGame();
   updateUI();
 
+  const awardSummary = xpAwards.map((award) => `${ATTRIBUTES[award.attributeKey].name} +${formatNumber(award.xp)}`).join(" • ");
   showToast(
-    `+${formatNumber(calculation.xp)} XP em ${ATTRIBUTES[effectiveAttribute].name}`,
-    calculation.capped
-      ? `${activity.name} registrado. O bônus total atingiu o limite configurado.`
-      : `${activity.name} registrado com sucesso.`,
+    activityId === "cardio" && xpAwards.length > 1 ? `+${formatNumber(calculation.xp)} XP total` : `+${formatNumber(calculation.xp)} XP em ${ATTRIBUTES[effectiveAttribute].name}`,
+    activityId === "cardio" && xpAwards.length > 1
+      ? awardSummary
+      : (calculation.capped ? `${activity.name} registrado. O bônus total atingiu o limite configurado.` : `${activity.name} registrado com sucesso.`),
     activity.icon
   );
 

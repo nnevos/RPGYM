@@ -130,12 +130,20 @@ function rebuildStatsFromSources() {
     next.totalActivities += 1;
     activeDays.add(dateKey);
 
-    const attributeKey = ATTRIBUTES[entry.attribute] ? entry.attribute : null;
-    if (attributeKey) {
-      const xp = Math.max(0, Number(entry.xp) || 0);
-      day.attributes[attributeKey].activities += 1;
+    const entryAwards = Array.isArray(entry.xpAwards) && entry.xpAwards.length
+      ? entry.xpAwards
+      : (ATTRIBUTES[entry.attribute] ? [{ attribute: entry.attribute, xp: entry.xp }] : []);
+    const countedAttributes = new Set();
+    for (const award of entryAwards) {
+      const attributeKey = ATTRIBUTES[award.attribute] ? award.attribute : null;
+      if (!attributeKey) continue;
+      const xp = Math.max(0, Number(award.xp) || 0);
+      if (!countedAttributes.has(attributeKey)) {
+        day.attributes[attributeKey].activities += 1;
+        next.attributes[attributeKey].activityCount += 1;
+        countedAttributes.add(attributeKey);
+      }
       day.attributes[attributeKey].xp += xp;
-      next.attributes[attributeKey].activityCount += 1;
       next.attributes[attributeKey].xpFromActivities += xp;
       attributeDays[attributeKey].add(dateKey);
     }

@@ -291,7 +291,10 @@ function renderBonusBreakdown() {
 function updateActivityPreviews() {
   const type = document.getElementById("cardioMode")?.value || "treadmill";
   const config = CARDIO_TYPES[type] || CARDIO_TYPES.treadmill;
-  setText("cardioAttributePreview", ATTRIBUTES[config.attribute]?.name || "Constituição");
+  const affinities = config.affinities || { primary: config.attribute || "constitution" };
+  const attributeNames = [ATTRIBUTES[affinities.primary]?.name || "Constituição"];
+  if (affinities.secondary?.attribute) attributeNames.push(ATTRIBUTES[affinities.secondary.attribute]?.name);
+  setText("cardioAttributePreview", attributeNames.filter(Boolean).join(" + "));
   setText("cardioLiveType", config.label);
   setText("cardioRequiredPreview", config.requiredLabel);
   setText("cardioTypeHint", config.hint);
@@ -758,7 +761,9 @@ function renderCardioHistory() {
     if (Number(v.floors) > 0) metrics.push(`${Math.round(Number(v.floors))} andares`);
     if (Number(v.jumps) > 0) metrics.push(`${Math.round(Number(v.jumps))} saltos`);
     const meta = [duration, ...metrics.slice(0,2), formatHistoryDate(date, entry.dateKey)].filter(Boolean).join(" • ");
-    return `<article class="cardio-history-item"><div><strong>${escapeHtml(label)}</strong><small>${escapeHtml(meta)}</small></div><span>+${formatNumber(entry.xp || 0)} XP</span></article>`;
+    const awards = Array.isArray(entry.xpAwards) && entry.xpAwards.length ? entry.xpAwards : [{ attribute: entry.attribute, xp: entry.xp || 0 }];
+    const xpText = awards.map((award) => `${ATTRIBUTES[award.attribute]?.name || "XP"} +${formatNumber(award.xp || 0)}`).join(" • ");
+    return `<article class="cardio-history-item"><div><strong>${escapeHtml(label)}</strong><small>${escapeHtml(meta)}</small></div><span>${escapeHtml(xpText)}</span></article>`;
   }).join("");
 }
 

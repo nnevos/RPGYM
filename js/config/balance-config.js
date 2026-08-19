@@ -1,6 +1,6 @@
 "use strict";
 
-// RPG GYM v0.3.3 - Modelo A: progressao desacelera naturalmente, sem cap de XP.
+// RPG GYM v0.3.4 - Modelo A + afinidades de cardio: progressao desacelera naturalmente, sem cap de XP.
 // Altere numeros aqui antes de tocar nas engines.
 const BALANCE = Object.freeze({
   levelCurve: {
@@ -35,7 +35,8 @@ const BALANCE = Object.freeze({
     after60PerMinute: 0.25,
     distanceBonusPerKm: 0, // distancia fica para roadmap e performance; evita favorecer uma maquina
     performanceBonus: 12,
-    performanceImprovementRatio: 0.01
+    performanceImprovementRatio: 0.01,
+    secondaryAttributeMaxRatio: 0.30
   },
   diet: {
     mealXp: 5,
