@@ -371,8 +371,8 @@ async function joinSocialGroup(groupId) {
         const { error: leaveError } = await supabaseClient.rpc("leave_social_group", { target_group: socialCurrentGroup.id });
         if (leaveError) throw leaveError;
       }
-      const { error } = await supabaseClient.from("group_members").insert({ group_id: groupId, user_id: userId, role: "member" });
-      if (error && error.code !== "23505") throw error;
+      const { error } = await supabaseClient.rpc("join_social_group", { target_group: groupId });
+      if (error) throw error;
       socialLastLoadedAt = 0;
       await syncSocialSnapshotNow();
       await ensureSocialLoaded(true);
