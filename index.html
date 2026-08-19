@@ -7,7 +7,10 @@
 <meta content="#0b0d13" name="theme-color"/>
 <meta content="RPG GYM: transforme treinos e hábitos saudáveis em uma jornada de evolução." name="description"/>
 <title>RPG GYM</title>
-<link href="css/style.css" rel="stylesheet"/>
+<link href="css/base.css" rel="stylesheet"/>
+<link href="css/product.css" rel="stylesheet"/>
+<link href="css/systems.css" rel="stylesheet"/>
+<link href="css/polish.css" rel="stylesheet"/>
 <script defer src="js/data/exercises.js"></script>
 <script defer src="js/data/foods.js"></script>
 <script defer src="js/config/game-config.js"></script>
@@ -243,7 +246,7 @@
   </div>
 </section><section aria-labelledby="trainingHeading" class="view" data-view-panel="training" hidden id="view-training">
   <div class="workout-page-head">
-    <div><h2 id="trainingHeading">Treino</h2><p>Suas rotinas de musculação</p></div>
+    <div><h2 id="trainingHeading">Treino</h2><p>Rotinas e registro de musculação</p></div>
     <button class="help-button" data-help="strength" aria-label="Como funciona o treino" type="button">?</button>
   </div>
   <section class="strength-workout-shell workout-minimal-shell" aria-labelledby="strengthWorkoutTitle">
@@ -302,7 +305,7 @@
 <p class="cardio-type-hint" id="cardioTypeHint">Ao finalizar, informe distância, velocidade média e inclinação.</p>
 <div class="cardio-start-meta">
 <span><small>Registrar ao finalizar</small><strong id="cardioRequiredPreview">Distância • velocidade • inclinação</strong></span>
-<span><small>Atributo</small><strong id="cardioAttributePreview">Constituição</strong></span>
+<span><small>Progressão principal</small><strong id="cardioAttributePreview">Constituição</strong></span>
 </div>
 </div>
 <div class="cardio-live-panel" hidden="" id="cardioLivePanel">
@@ -402,20 +405,37 @@
       <canvas aria-label="Gráfico dos níveis dos seis atributos" height="260" id="radarChart" width="260"></canvas>
     </section>
 
+    <section class="profile-next-section" aria-labelledby="profileNextTitle">
+      <div class="profile-section-title-row">
+        <div><h3 id="profileNextTitle">Próximo objetivo</h3><p>O passo mais próximo da sua progressão</p></div>
+      </div>
+      <button class="profile-next-card" id="profileNextObjective" type="button" data-open-attribute="force"></button>
+    </section>
+
     <section class="profile-attributes-section" aria-labelledby="characterAttributesTitle">
       <div class="profile-section-title-row">
         <h3 id="characterAttributesTitle">Atributos</h3>
-        <small>Toque para ver missões</small>
+        <small>Toque para abrir a rota</small>
       </div>
       <div class="profile-attribute-buttons" id="characterAttributeList"></div>
     </section>
 
+    <section class="profile-week-section" aria-labelledby="profileWeekTitle">
+      <div class="profile-section-title-row">
+        <div><h3 id="profileWeekTitle">Sua semana</h3><p>Atividade e evolução desde segunda-feira</p></div>
+        <small id="profileWeekXp">0 XP</small>
+      </div>
+      <div class="profile-week-grid" id="profileWeekGrid"></div>
+      <div class="profile-week-attributes" id="profileWeekAttributes"></div>
+    </section>
+
     <section class="profile-achievements-section" aria-labelledby="profileAchievementsTitle">
       <div class="profile-section-title-row">
-        <div><h3 id="profileAchievementsTitle">Conquistas</h3><p>Badges permanentes da sua jornada</p></div>
+        <div><h3 id="profileAchievementsTitle">Conquistas recentes</h3><p>Últimos badges e próximos objetivos</p></div>
         <small id="profileAchievementsCount">0/13</small>
       </div>
       <div class="profile-achievements-list" id="profileAchievementsList"></div>
+      <button class="profile-achievements-toggle" id="profileAchievementsToggle" type="button">Ver todas</button>
     </section>
   </div>
 
@@ -433,6 +453,7 @@
       <div class="attribute-class-mark" id="attributeClassMark">F</div>
       <strong id="attributeClassName">Berserker</strong>
       <span id="attributeClassStage">Classe bloqueada</span>
+      <div class="class-evolution-track" id="attributeClassEvolution" aria-label="Evolução da classe"></div>
       <div class="attribute-mission-progress-line">
         <span id="attributeMissionLevel">Nível 1</span>
         <span id="attributeMissionXp">0 / 100 XP</span>
@@ -444,6 +465,7 @@
         <div><h3>Roadmap</h3><p>Objetivos permanentes • progresso da conta</p></div>
         <div class="roadmap-title-actions"><button class="mini-help-button" data-roadmap-help type="button" aria-label="Como funciona o roadmap">?</button><small id="attributeRoadmapCount">0/10 capítulos</small></div>
       </div>
+      <div class="roadmap-journey" id="attributeRoadmapJourney" aria-label="Linha de progressão do roadmap"></div>
       <div class="attribute-roadmap-list" id="attributeRoadmapList"></div>
     </section>
     <section class="attribute-mission-list-section">
@@ -632,6 +654,16 @@
 <button class="cardio-continue-confirm" id="cardioContinueConfirm" type="button">Continuar</button>
 </div>
 </div>
+</div>
+<div class="cardio-result-overlay" hidden id="cardioResultOverlay">
+<section class="cardio-result-modal" role="dialog" aria-modal="true" aria-labelledby="cardioResultTitle">
+<p class="cardio-result-kicker">CARDIO CONCLUÍDO</p>
+<h2 id="cardioResultTitle">Sessão registrada</h2>
+<div class="cardio-result-total"><small>XP recebido</small><strong id="cardioResultTotalXp">+0 XP</strong><span id="cardioResultPerformance">Progresso salvo</span></div>
+<div class="cardio-result-awards" id="cardioResultAwards"></div>
+<div class="cardio-result-metrics" id="cardioResultMetrics"></div>
+<button class="cardio-result-close" id="closeCardioResult" type="button">Continuar</button>
+</section>
 </div>
 <div aria-live="assertive" class="celebration" hidden="" id="celebration">
 <div aria-hidden="true" class="celebration-particles">

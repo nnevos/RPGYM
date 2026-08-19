@@ -1,7 +1,7 @@
 "use strict";
 
 function updateUI(options = {}) {
-  const { persist = true, evaluate = true } = options;
+  const { persist = true, evaluate = true, view = activeView } = options;
   normalizeTemporalState();
   ensureMissions();
   refreshMissionProgress();
@@ -9,17 +9,61 @@ function updateUI(options = {}) {
   if (evaluate) evaluateAchievements();
 
   renderTopbar();
-  renderDashboard();
-  renderSocial();
-  renderTraining();
-  renderDiet();
-  renderMissions();
-  renderCharacter();
-  renderProfile();
-  renderCardioHistory();
-  updateActivityPreviews();
+  renderActiveView(view);
+  renderLiveSessionIndicators();
   updateTimeLabels();
   if (persist) saveGame();
+}
+
+function renderActiveView(viewName = activeView) {
+  switch (viewName) {
+    case "dashboard":
+      renderDashboard();
+      break;
+    case "social":
+      renderSocial();
+      break;
+    case "training":
+      renderTraining();
+      break;
+    case "cardio":
+      renderCardioHistory();
+      updateActivityPreviews();
+      break;
+    case "missions":
+      renderMissions();
+      break;
+    case "diet":
+      renderDiet();
+      break;
+    case "character":
+      renderCharacter();
+      renderProfile();
+      break;
+    default:
+      renderSocial();
+      break;
+  }
+}
+
+function renderLiveSessionIndicators() {
+  const workoutLive = Boolean(state?.workouts?.active);
+  const cardioLive = Boolean(cardioTimerStartedAt || cardioTimerElapsedMs > 0);
+
+  document.querySelectorAll('[data-view="training"]').forEach((button) => {
+    button.classList.toggle("has-live-session", workoutLive);
+    if (workoutLive) button.dataset.liveLabel = "Treino em andamento";
+    else delete button.dataset.liveLabel;
+  });
+
+  document.querySelectorAll('[data-view="cardio"]').forEach((button) => {
+    button.classList.toggle("has-live-session", cardioLive);
+    if (cardioLive) button.dataset.liveLabel = cardioTimerPaused ? "Cardio pausado" : "Cardio em andamento";
+    else delete button.dataset.liveLabel;
+  });
+
+  document.body.classList.toggle("has-live-workout", workoutLive);
+  document.body.classList.toggle("has-live-cardio", cardioLive);
 }
 
 function renderTopbar() {
@@ -69,7 +113,7 @@ function renderDashboard() {
     "globalLevelDescription",
     state.player.globalLevel >= MAX_LEVEL
       ? "Nível global máximo alcançado. Sua jornada continua nos hábitos."
-      : `Título atual: ${state.player.title}. Na v0.3.7, o Global usa 5 rotas ativas; Carisma entra quando o Social estiver completo.`
+      : `Título atual: ${state.player.title}. O nível global considera as rotas ativas; Carisma entra quando o Social estiver completo.`
   );
 
   setProgress("globalProgressTrack", "globalProgressBar", journeyPercent);
@@ -406,6 +450,8 @@ function renderCharacter() {
   setText("profileHeightSummary", height);
   setText("profileClassSummary", getProfileClassSummary());
 
+  renderProfileNextObjective();
+  renderProfileWeek();
   renderAchievements();
 
   const attributeList = document.getElementById("characterAttributeList");
@@ -421,15 +467,106 @@ function renderCharacter() {
   }
 }
 
+
+function renderProfileNextObjective() {
+  const button = document.getElementById("profileNextObjective");
+  if (!button) return;
+  const candidates = [];
+  for (const attributeKey of PROFILE_ATTRIBUTE_ORDER) {
+    const chapters = ROADMAP_DEFINITIONS[attributeKey] || [];
+    const chapter = chapters.find((item) => !getRoadmapChapterState(attributeKey, item).claimed);
+    if (!chapter) continue;
+    const chapterState = getRoadmapChapterState(attributeKey, chapter);
+    const completed = chapterState.objectives.filter((objective) => objective.complete).length;
+    const total = Math.max(1, chapterState.objectives.length);
+    const objectiveRatio = completed / total;
+    const levelGap = Math.max(0, chapter.unlockLevel - (state.attributes[attributeKey]?.level || 1));
+    const score = (chapterState.ready ? 5 : chapterState.levelReady ? 3 : 0) + objectiveRatio - (levelGap * .04);
+    candidates.push({ attributeKey, chapter, chapterState, completed, total, score });
+  }
+  if (!candidates.length) {
+    button.dataset.openAttribute = "force";
+    button.innerHTML = `<span class="profile-next-copy"><small>Jornada concluída</small><strong>Todos os roadmaps atuais foram finalizados</strong><em>Continue construindo sua rotina.</em></span><span class="profile-next-arrow">✓</span>`;
+    return;
+  }
+  candidates.sort((a,b) => b.score - a.score);
+  const next = candidates[0];
+  const definition = ATTRIBUTES[next.attributeKey];
+  const incomplete = next.chapterState.objectives.filter((objective) => !objective.complete).slice(0,2);
+  let detail = "Pronto para desbloquear";
+  if (!next.chapterState.ready) {
+    const parts = [];
+    if (!next.chapterState.levelReady) parts.push(`alcance Nv. ${next.chapter.unlockLevel}`);
+    incomplete.forEach((objective) => {
+      const remaining = Math.max(0, Number(objective.target) - Number(objective.value));
+      parts.push(`faltam ${formatNumber(remaining)} ${objective.label.toLocaleLowerCase("pt-BR")}`);
+    });
+    detail = parts.slice(0,2).join(" • ") || `${next.completed}/${next.total} objetivos`;
+  }
+  const pct = Math.round((next.completed / next.total) * 100);
+  button.dataset.openAttribute = next.attributeKey;
+  button.style.setProperty("--attribute-color", definition.chartColor);
+  button.innerHTML = `<span class="profile-next-mark">${escapeHtml(definition.name.slice(0,1))}</span><span class="profile-next-copy"><small>${escapeHtml(definition.name)} • próximo marco Nv. ${next.chapter.unlockLevel}</small><strong>${escapeHtml(next.chapter.title)}</strong><span class="profile-next-progress"><i style="width:${clamp(pct,0,100)}%"></i></span><em>${escapeHtml(detail)}</em></span><span class="profile-next-arrow">›</span>`;
+}
+
+function getProfileWeekSummary(offsetWeeks = 0) {
+  const base = new Date();
+  base.setHours(12,0,0,0);
+  const day = base.getDay();
+  const delta = day === 0 ? -6 : 1 - day;
+  base.setDate(base.getDate() + delta + (offsetWeeks * 7));
+  const keys = [];
+  for (let i=0;i<7;i+=1) {
+    const d = new Date(base); d.setDate(base.getDate()+i); keys.push(localDateKey(d));
+  }
+  const days = keys.map((key) => state.stats?.daily?.[key] || createEmptyDailyStats());
+  const sum = (field) => days.reduce((total, item) => total + (Number(item[field]) || 0), 0);
+  const activeDays = days.filter((item) => Number(item.workouts)>0 || Number(item.cardioSessions)>0 || Number(item.meals)>0 || Number(item.activityCount)>0).length;
+  const attributeXp = Object.fromEntries(Object.keys(ATTRIBUTES).map((key) => [key, days.reduce((total,item)=>total+(Number(item.attributes?.[key]?.xp)||0),0)]));
+  const activityXp = Object.values(attributeXp).reduce((a,b)=>a+b,0);
+  return {
+    workouts: sum("workouts"), cardioMinutes: sum("cardioMinutes"), sets: sum("sets"), prs: sum("workoutPersonalRecords") + sum("cardioPersonalRecords"),
+    activeDays, activityXp, attributeXp
+  };
+}
+
+function renderProfileWeek() {
+  const current = getProfileWeekSummary(0);
+  const previous = getProfileWeekSummary(-1);
+  setText("profileWeekXp", `${formatNumber(Math.round(current.activityXp))} XP de atividades`);
+  const grid = document.getElementById("profileWeekGrid");
+  if (grid) grid.innerHTML = [
+    ["Treinos", current.workouts, previous.workouts],
+    ["Cardio", `${formatNumber(Math.round(current.cardioMinutes))} min`, Math.round(previous.cardioMinutes)],
+    ["Séries", current.sets, previous.sets],
+    ["PRs", current.prs, previous.prs],
+    ["Dias ativos", `${current.activeDays}/7`, previous.activeDays]
+  ].map(([label,value,previousValue], index) => {
+    const currentNum = index === 1 ? Math.round(current.cardioMinutes) : index === 4 ? current.activeDays : Number(value) || 0;
+    const priorNum = Number(previousValue) || 0;
+    const delta = currentNum - priorNum;
+    const deltaText = delta === 0 ? "=" : delta > 0 ? `+${formatNumber(delta)}` : `${formatNumber(delta)}`;
+    return `<div><small>${escapeHtml(label)}</small><strong>${escapeHtml(String(value))}</strong><em class="${delta>0?"is-up":delta<0?"is-down":""}">${deltaText} vs. semana anterior</em></div>`;
+  }).join("");
+  const attrs = document.getElementById("profileWeekAttributes");
+  if (attrs) {
+    const ranked = PROFILE_ATTRIBUTE_ORDER.map((key)=>({key,xp:current.attributeXp[key]||0})).filter((item)=>item.xp>0).sort((a,b)=>b.xp-a.xp).slice(0,4);
+    attrs.innerHTML = ranked.length ? ranked.map(({key,xp}) => `<span style="--attribute-color:${ATTRIBUTES[key].chartColor}"><i></i><strong>${escapeHtml(ATTRIBUTES[key].name)}</strong><em>+${formatNumber(Math.round(xp))} XP</em></span>`).join("") : `<p>Nenhum XP de atividade registrado nesta semana ainda.</p>`;
+  }
+}
+
 function renderRoadmapChapter(attributeKey, chapter) {
   const chapterState = getRoadmapChapterState(attributeKey, chapter);
   const completedCount = chapterState.objectives.filter((objective) => objective.complete).length;
   const allCount = chapterState.objectives.length;
   const status = chapterState.claimed ? "Concluído" : chapterState.ready ? "Pronto" : chapterState.levelReady ? `${completedCount}/${allCount} objetivos` : `Requer Nv. ${chapter.unlockLevel}`;
+  const isClassChapter = chapter.unlockLevel % 10 === 0;
+  const classStage = Math.max(1, Math.min(5, chapter.unlockLevel / 10));
+  const classEvolutionLabel = isClassChapter ? (chapter.unlockLevel === 50 ? `${ATTRIBUTES[attributeKey].className} • Mestre` : `${ATTRIBUTES[attributeKey].className} ${romanNumeral(classStage)}`) : "";
   return `
-    <article class="roadmap-chapter ${chapterState.claimed ? "is-claimed" : ""} ${chapterState.ready ? "is-ready" : ""}">
+    <article class="roadmap-chapter ${chapterState.claimed ? "is-claimed" : ""} ${chapterState.ready ? "is-ready" : ""} ${!chapterState.levelReady && !chapterState.claimed ? "is-locked-future" : ""}">
       <div class="roadmap-chapter-head">
-        <div><small>CAPÍTULO • NV. ${chapter.unlockLevel}</small><strong>${escapeHtml(chapter.title)}</strong></div>
+        <div><small class="roadmap-chapter-kicker">CAPÍTULO • NV. ${chapter.unlockLevel}${isClassChapter ? `<b>EVOLUÇÃO</b>` : `<b>MARCO</b>`}</small><strong>${escapeHtml(chapter.title)}</strong></div>
         <span>${escapeHtml(status)}</span>
       </div>
       <div class="roadmap-objectives">
@@ -442,6 +579,7 @@ function renderRoadmapChapter(attributeKey, chapter) {
           </div>`;
         }).join("")}
       </div>
+      ${isClassChapter ? `<div class="roadmap-class-evolution"><span>Evolução de classe</span><strong>${escapeHtml(classEvolutionLabel)}</strong></div>` : ""}
       <div class="roadmap-reward"><span>Recompensa</span><strong>${escapeHtml(chapter.rewardLabel)}</strong></div>
       ${chapterState.claimed
         ? `<button type="button" disabled>Concluído ✓</button>`
@@ -469,9 +607,18 @@ function renderAchievementCard(achievement) {
 function renderAchievements() {
   const container = document.getElementById("profileAchievementsList");
   if (!container) return;
-  const unlockedCount = ACHIEVEMENT_DEFINITIONS.filter((item) => achievementUnlocked(item.id)).length;
-  setText("profileAchievementsCount", `${unlockedCount}/${ACHIEVEMENT_DEFINITIONS.length}`);
-  container.innerHTML = ACHIEVEMENT_DEFINITIONS.map(renderAchievementCard).join("");
+  const unlocked = ACHIEVEMENT_DEFINITIONS.filter((item) => achievementUnlocked(item.id));
+  const locked = ACHIEVEMENT_DEFINITIONS.filter((item) => !achievementUnlocked(item.id));
+  setText("profileAchievementsCount", `${unlocked.length}/${ACHIEVEMENT_DEFINITIONS.length}`);
+  const recent = [...unlocked].reverse().slice(0, 3);
+  const preview = recent.length ? [...recent, ...locked.slice(0, Math.max(0, 3 - recent.length))] : locked.slice(0,3);
+  const items = showAllAchievements ? [...unlocked].reverse().concat(locked) : preview;
+  container.innerHTML = items.map(renderAchievementCard).join("");
+  const toggle = document.getElementById("profileAchievementsToggle");
+  if (toggle) {
+    toggle.hidden = ACHIEVEMENT_DEFINITIONS.length <= 3;
+    toggle.textContent = showAllAchievements ? "Mostrar recentes" : "Ver todas";
+  }
 }
 
 function renderCharacterAttributeCard(attributeKey) {
@@ -482,14 +629,15 @@ function renderCharacterAttributeCard(attributeKey) {
   const xpText = attribute.level >= MAX_LEVEL
     ? "Nível máximo"
     : `${formatNumber(attribute.xp)} / ${formatNumber(requiredXp)} XP`;
+  const nextChapter = (ROADMAP_DEFINITIONS[attributeKey] || []).find((chapter) => !getRoadmapChapterState(attributeKey, chapter).claimed);
+  const milestoneText = nextChapter ? `Próximo marco: Nv. ${nextChapter.unlockLevel}` : "Roadmap concluído";
 
   return `
     <button class="profile-attribute-button" type="button" data-open-attribute="${attributeKey}" style="--attribute-color:${definition.chartColor}">
       <span class="profile-attribute-copy">
-        <strong>${escapeHtml(definition.name)}</strong>
-        <small>Nível ${attribute.level}</small>
+        <span class="profile-attribute-titleline"><strong>${escapeHtml(definition.name)}</strong><small>Nível ${attribute.level}</small></span>
         <span class="profile-attribute-progress" role="progressbar" aria-label="XP de ${escapeHtml(definition.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress)}"><i style="width:${clamp(progress, 0, 100)}%"></i></span>
-        <em>${xpText}</em>
+        <span class="profile-attribute-meta"><em>${xpText}</em><em>${escapeHtml(milestoneText)}</em></span>
       </span>
       <span class="profile-attribute-chevron" aria-hidden="true">›</span>
     </button>
@@ -555,6 +703,32 @@ function renderAttributeMissionPanel() {
   if (xpBar) xpBar.style.width = `${clamp(progress, 0, 100)}%`;
 
   const chapters = ROADMAP_DEFINITIONS[key] || [];
+
+  const claimedChapterIds = state.roadmaps?.[key]?.claimedChapters || [];
+  const classEvolution = document.getElementById("attributeClassEvolution");
+  if (classEvolution) {
+    const classLevels = [10, 20, 30, 40, 50];
+    const nextClassLevel = classLevels.find((level) => !claimedChapterIds.includes(`${key}_${level}`));
+    classEvolution.innerHTML = classLevels.map((level, index) => {
+      const done = claimedChapterIds.includes(`${key}_${level}`);
+      const current = !done && level === nextClassLevel;
+      const label = level === 50 ? "Mestre" : romanNumeral(index + 1);
+      return `<span class="class-evolution-step ${done ? "is-done" : ""} ${current ? "is-current" : ""}"><i></i><small>${escapeHtml(label)} · Nv.${level}</small></span>`;
+    }).join("");
+  }
+
+  const journey = document.getElementById("attributeRoadmapJourney");
+  if (journey) {
+    const firstOpenIndex = chapters.findIndex((chapter) => !getRoadmapChapterState(key, chapter).claimed);
+    journey.innerHTML = chapters.map((chapter, index) => {
+      const chapterState = getRoadmapChapterState(key, chapter);
+      const done = chapterState.claimed;
+      const current = index === firstOpenIndex;
+      const isClassChapter = chapter.unlockLevel % 10 === 0;
+      return `<span class="roadmap-node ${done ? "is-done" : ""} ${current ? "is-current" : ""} ${chapterState.ready ? "is-ready" : ""}" title="${escapeHtml(chapter.title)}"><i class="roadmap-node-dot">${done ? "✓" : isClassChapter ? "◆" : ""}</i><small>${chapter.unlockLevel}</small></span>`;
+    }).join("");
+  }
+
   const roadmapList = document.getElementById("attributeRoadmapList");
   if (roadmapList) {
     const firstOpenIndex = chapters.findIndex((chapter) => !getRoadmapChapterState(key, chapter).claimed);

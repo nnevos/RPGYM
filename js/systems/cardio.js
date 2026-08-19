@@ -202,15 +202,71 @@ function closeCardioConfirmation(resetTimer = false) {
 }
 
 function confirmTimedCardio() {
+  const confirmButton = document.getElementById("cardioContinueConfirm");
+  if (confirmButton?.disabled) return;
   if (!validateCardioConfirmation()) return;
+  if (confirmButton) { confirmButton.disabled = true; confirmButton.setAttribute("aria-busy", "true"); }
   closeCardioConfirmation(false);
-  registerActivity("cardio");
-  showToast(
-    "Cardio finalizado!",
-    "Tempo e dados da atividade foram adicionados ao histórico.",
-    "✓"
-  );
+  const result = registerActivity("cardio", { deferPresentation: true });
+  if (result) showCardioResult(result);
   resetCardioTimer();
+  if (confirmButton) { confirmButton.disabled = false; confirmButton.removeAttribute("aria-busy"); }
+}
+
+function showCardioResult(result) {
+  const overlay = document.getElementById("cardioResultOverlay");
+  if (!overlay) return;
+  cardioResultContext = result;
+  const { calculation, xpAwards, historyEntry, beforeAttributes } = result;
+  setText("cardioResultTitle", historyEntry.activityName || "Cardio concluído");
+  setText("cardioResultTotalXp", `+${formatNumber(calculation.xp)} XP`);
+  const performance = document.getElementById("cardioResultPerformance");
+  if (performance) {
+    if (calculation.performance?.isPr) performance.textContent = `${calculation.performance.label} • novo PR`;
+    else if (calculation.performance?.label === "Referência inicial") performance.textContent = "Primeira referência de performance registrada";
+    else performance.textContent = "Endurance e performance registrados";
+  }
+  const awards = document.getElementById("cardioResultAwards");
+  if (awards) awards.innerHTML = xpAwards.map((award) => {
+    const definition = ATTRIBUTES[award.attributeKey];
+    const attribute = state.attributes[award.attributeKey];
+    const needed = attribute.level >= MAX_LEVEL ? 0 : calculateRequiredXP(attribute.level);
+    const pct = attribute.level >= MAX_LEVEL ? 100 : clamp((attribute.xp / needed) * 100, 0, 100);
+    const before = beforeAttributes?.[award.attributeKey];
+    const levelUp = before && attribute.level > before.level ? `<em>Level up ${before.level} → ${attribute.level}</em>` : `<em>${award.role === "secondary" ? "XP secundário por performance" : "XP principal da sessão"}</em>`;
+    const remaining = attribute.level >= MAX_LEVEL ? 0 : Math.max(0, needed - attribute.xp);
+    const near = attribute.level < MAX_LEVEL && remaining <= Math.max(80, needed * .18) ? `<small>Faltam ${formatNumber(Math.ceil(remaining))} XP para Nv. ${attribute.level + 1}</small>` : `<small>${attribute.level >= MAX_LEVEL ? "Nível máximo" : `${formatNumber(attribute.xp)} / ${formatNumber(needed)} XP`}</small>`;
+    return `<article style="--attribute-color:${definition.chartColor}"><div><span>${escapeHtml(definition.name)}</span><strong>+${formatNumber(award.xp)} XP</strong></div>${levelUp}<i><b style="width:${pct}%"></b></i>${near}</article>`;
+  }).join("");
+  const metrics = document.getElementById("cardioResultMetrics");
+  if (metrics) {
+    const data = historyEntry.cardioData || {};
+    const values = data.values || data;
+    const items = [["Tempo", formatCardioDuration((Number(data.minutes)||0)*60000)]];
+    if (Number(values.distance)>0) items.push(["Distância", `${formatDecimal(values.distance,2)} km`]);
+    if (Number(values.distanceMeters)>0) items.push(["Distância", `${formatNumber(Math.round(values.distanceMeters))} m`]);
+    if (Number(values.speed)>0) items.push(["Velocidade", `${formatDecimal(values.speed,1)} km/h`]);
+    if (Number(values.rpm)>0) items.push(["Cadência", `${formatDecimal(values.rpm,0)} RPM`]);
+    if (Number(values.floors)>0) items.push(["Escada", `${formatNumber(Math.round(values.floors))} andares`]);
+    if (Number(values.jumps)>0) items.push(["Corda", `${formatNumber(Math.round(values.jumps))} saltos`]);
+    const derived = getCardioDerivedMetric(data);
+    if (derived) items.push(["Performance", derived]);
+    metrics.innerHTML = items.slice(0,4).map(([label,value]) => `<div><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></div>`).join("");
+  }
+  overlay.hidden = false;
+  document.body.classList.add("modal-open");
+}
+
+function closeCardioResult() {
+  const overlay = document.getElementById("cardioResultOverlay");
+  if (overlay) overlay.hidden = true;
+  document.body.classList.remove("modal-open");
+  const result = cardioResultContext;
+  cardioResultContext = null;
+  if (!result) return;
+  if (result.streakUpdate?.changed) showToast(result.streakUpdate.reset ? "Novo streak iniciado" : "Streak aumentado", `Sequência atual: ${formatDays(state.streak.current)}.`, "🔥");
+  result.newlyCompletedMissions?.forEach((mission) => showToast("Missão concluída", `${mission.name} está pronta para resgate.`, "✦"));
+  presentProgressEvents(result.progressEvents || []);
 }
 
 
@@ -226,4 +282,5 @@ function resetCardioTimer() {
   const button = document.getElementById("cardioPauseButton");
   if (button) button.setAttribute("aria-label", "Pausar cardio");
   toggleCardioPanels(false);
+  if (typeof renderLiveSessionIndicators === "function") renderLiveSessionIndicators();
 }

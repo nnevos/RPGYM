@@ -1,82 +1,77 @@
-# RPG GYM v0.4.0
+# RPG GYM v0.4.4
 
-Esta versao reorganiza o projeto para separar dados, regras, sistemas e interface sem usar frameworks ou ES modules.
-Isso permite abrir `index.html` diretamente pelo navegador (file://) e ainda manter os arquivos editaveis.
+A v0.4.4 é uma refatoração técnica. Ela mantém as mecânicas e o visual da v0.4.3, mas reduz trabalho desnecessário no navegador e deixa a base mais simples de manter.
+
+O projeto continua sem frameworks e pode ser executado abrindo `index.html` diretamente no navegador.
 
 ## Estrutura
 
-- `index.html`: estrutura das telas.
-- `css/style.css`: toda a camada visual.
-- `js/data/`: bases grandes de exercicios e alimentos.
-- `js/config/`: valores de balanceamento e conteudo editavel.
-- `js/core/`: estado, save, stats, missoes, XP, roadmaps e helpers.
-- `js/systems/`: funcionalidades de treino, dieta e social.
-- `js/ui/`: renderizacao, modais, eventos e navegacao.
-- `js/app.js`: ponto de entrada.
+```text
+RPG-GYM/
+├── index.html
+├── README.md
+├── TUTORIAL-MECANICAS.md
+├── css/
+│   ├── base.css
+│   ├── product.css
+│   ├── systems.css
+│   └── polish.css
+├── js/
+│   ├── app.js
+│   ├── config/
+│   ├── core/
+│   ├── data/
+│   ├── systems/
+│   └── ui/
+└── tools/
+```
+
+### CSS
+
+Os estilos foram separados mantendo a mesma ordem de cascata da versão anterior:
+
+- `base.css`: fundação visual e estilos antigos de base;
+- `product.css`: linguagem visual do produto e componentes estruturais;
+- `systems.css`: estilos específicos dos sistemas Treino, Cardio, Dieta e RPG;
+- `polish.css`: ajustes finais de UX, responsividade e acessibilidade.
+
+A ordem dos quatro `<link>` em `index.html` é intencional. Não altere a ordem sem revisar a cascata.
+
+### JavaScript
+
+- `js/data/`: bases estáticas grandes de exercícios e alimentos;
+- `js/config/`: balanceamento e conteúdo configurável;
+- `js/core/`: save, stats, XP, missões, roadmaps, runtime e utilitários;
+- `js/systems/`: Treino, Cardio, Dieta e Social;
+- `js/ui/`: renderização, interações, modais e navegação;
+- `js/app.js`: entrada da aplicação.
+
+## Otimizações da v0.4.4
+
+- exercícios e alimentos possuem índices `Map` para consultas por ID em O(1), evitando vários `Array.find()` durante renderizações;
+- filtros de músculo/equipamento e agrupamentos de alimentos comuns são pré-calculados uma vez na inicialização;
+- textos normalizados de pesquisa são pré-indexados, reduzindo trabalho a cada tecla digitada;
+- busca de exercícios, alimentos e grupos utiliza debounce curto;
+- alterações rápidas em carga, reps, notas e nome do treino usam salvamento agrupado, reduzindo gravações repetidas no `localStorage`;
+- o save pendente é descarregado ao sair da página;
+- `updateUI()` renderiza somente a tela ativa em vez de reconstruir todas as telas escondidas;
+- ao navegar, a tela de destino é atualizada naquele momento, preservando dados atuais sem custo de renderização invisível.
 
 ## Onde alterar o RPG
 
-- XP, atributos e classes: `js/config/game-config.js` + `js/core/progression.js`.
-- Missoes diarias/semanais: `js/config/mission-data.js`.
-- Roadmaps: `js/config/roadmap-data.js`.
-- Conquistas: `js/config/achievement-data.js`.
-- Tipos/campos de cardio: `js/config/cardio-data.js`.
+- Curva, XP e anti-farm: `js/config/balance-config.js`
+- Atributos e classes: `js/config/game-config.js`
+- Missões: `js/config/mission-data.js`
+- Roadmaps: `js/config/roadmap-data.js`
+- Conquistas: `js/config/achievement-data.js`
+- Cardio multiatributo: `js/config/cardio-data.js`
 
-## Regra de manutencao
+Para alterações mecânicas detalhadas, consulte `TUTORIAL-MECANICAS.md`.
 
-Sempre que possivel, altere primeiro um arquivo em `js/config/`. As engines em `js/core/` devem interpretar os dados, nao armazenar valores de balanceamento espalhados pelo codigo.
+## Regra de manutenção
 
-## Tutorial de mecânicas
+Valores de balanceamento devem ficar em `js/config/` sempre que possível. `js/core/` interpreta as regras, `js/systems/` registra as atividades e `js/ui/` apresenta o resultado. Evite colocar números de balanceamento diretamente na camada visual.
 
-Para alterar XP, missões diárias/semanais, roadmaps, classes, badges, títulos, buffs, métricas e balanceamento, consulte `TUTORIAL-MECANICAS.md`.
+## Compatibilidade
 
-## Roadmaps completos
-
-As seis rotas de atributos possuem agora capitulos nos niveis 5, 10, 15, 20, 25, 30, 35, 40, 45 e 50. Edite `js/config/roadmap-data.js` para rebalancear metas e recompensas. Evolucoes de classe em 20/30/40/50 dependem do capitulo correspondente.
-
-
-## v0.3.2 — Balanceamento
-
-Os números centrais agora ficam em `js/config/balance-config.js`.
-
-Abra `tools/progression-simulator.html` para comparar Casual / Médio / Dedicado em 12, 26 e 52 semanas. O simulador é uma ferramenta de desenvolvimento e não aparece no app.
-
-A v0.3.2 também troca o XP de musculação por sessão + séries com retorno decrescente, cardio por faixas de duração, reduz o peso das recompensas de missões e limita bônus combinados a 25%.
-
-## v0.3.3 — Modelo A de progressão
-
-A progressão agora segue o Modelo A: níveis iniciais avançam mais rápido e o custo cresce naturalmente no longo prazo. Não existe limite semanal de XP.
-
-Regras principais:
-
-- musculação, cardio e dieta são categorias independentes; fazer musculação e cardio no mesmo dia não reduz uma à outra;
-- repetir a mesma categoria no mesmo dia continua concedendo XP, porém com retorno decrescente;
-- treinos muito curtos recebem apenas parte do bônus fixo de conclusão, mas continuam contando séries válidas;
-- cardio abaixo de 10 minutos recebe o bônus de conclusão proporcional ao tempo;
-- musculação reconhece PR por exercício usando melhor performance anterior (1RM estimado para carga + reps, reps para peso corporal e tempo para isometria);
-- cardio cria uma referência na primeira sessão e pode premiar melhora real de ritmo, velocidade/cadência conforme o tipo de atividade;
-- a primeira referência não é tratada como PR;
-- missões semanais com buff temporário passaram de 1.20x para 1.10x;
-- roadmaps de Força incluem objetivos de PR nos marcos de classe de longo prazo.
-
-Os valores continuam centralizados em `js/config/balance-config.js`.
-
-
-## Cardio com múltiplos atributos (v0.3.4)
-
-O cardio agora usa afinidades em vez de uma relação rígida 1:1 entre atividade e atributo. A duração/endurance alimenta o atributo primário; uma característica secundária mensurável pode gerar uma parcela menor de XP (máximo configurado de 30% da base primária). Exemplos: corrida/esteira = Constituição + Agilidade; remo/escada = Constituição + Força; corda = Agilidade + Constituição. O XP secundário só aparece quando a modalidade atende aos critérios de performance definidos em `js/config/cardio-data.js`. PRs de performance são direcionados ao atributo que representa aquela performance quando apropriado.
-
-
-## Balanceamento e playtest (v0.3.5)
-
-A v0.3.5 adiciona duas ferramentas de desenvolvimento sem alterar a interface principal do jogador:
-
-- `tools/progression-simulator.html`: simula os perfis Casual, Médio e Dedicado em 12, 26 e 52 semanas usando a curva e as regras configuradas em `balance-config.js`, incluindo cardio multiatributo, dieta, missões e uma expectativa de PRs.
-- **Auditoria de XP**: em `Perfil > Configurações > Diagnóstico de balanceamento`, mostra cada entrada de XP, atributo, XP base, bônus, retorno decrescente e componentes conhecidos. O log pode ser exportado em JSON e é separado do save do jogador.
-
-A auditoria usa a chave local `rpgym_balance_audit_v1` e pode ser limpa sem afetar progresso, treinos, dieta ou cardio.
-
-
-## v0.4.0 — Experiência do RPG
-
-A v0.4 preserva o balanceamento consolidado na v0.3.7 e passa a explicar melhor as mecânicas ao jogador. Inclui onboarding local exibido apenas na primeira abertura, reabertura do guia pelas configurações do Perfil, ajuda contextual atualizada, explicação de cardio multiatributo e roadmap, destaque do próximo capítulo permanente e mensagens de evolução já existentes para nível, classe, roadmap e conquistas. O estado do tutorial é salvo junto ao progresso e migrado sem apagar saves antigos.
+A v0.4.4 não muda a estrutura funcional do save nem o balanceamento da v0.4.3. Saves existentes continuam sendo migrados normalmente pelo sistema atual.

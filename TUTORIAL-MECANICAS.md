@@ -28,7 +28,7 @@ Este arquivo explica **onde e como alterar as regras do jogo** sem precisar mexe
 | Dados do treino | `js/systems/workouts.js` |
 | Dados da dieta | `js/systems/diet.js` |
 | Dados sociais | `js/systems/social.js` |
-| Aparência | `css/style.css` e `js/ui/` |
+| Aparência | `css/` e `js/ui/` |
 
 ---
 
@@ -1509,7 +1509,10 @@ Não confunda configuração mecânica com UI.
 Visual:
 
 ```text
-css/style.css
+css/base.css
+css/product.css
+css/systems.css
+css/polish.css
 js/ui/views.js
 js/ui/interactions.js
 ```
@@ -1665,7 +1668,10 @@ Na maioria das mudanças mecânicas simples, deixe estes arquivos intactos:
 
 ```text
 index.html
-css/style.css
+css/base.css
+css/product.css
+css/systems.css
+css/polish.css
 js/ui/views.js
 js/ui/interactions.js
 js/data/exercises.js
@@ -1798,3 +1804,15 @@ Não transforme retorno decrescente em bloqueio. O jogador que fizer mais deve s
 ## Cardio com múltiplos atributos (v0.3.4)
 
 O cardio agora usa afinidades em vez de uma relação rígida 1:1 entre atividade e atributo. A duração/endurance alimenta o atributo primário; uma característica secundária mensurável pode gerar uma parcela menor de XP (máximo configurado de 30% da base primária). Exemplos: corrida/esteira = Constituição + Agilidade; remo/escada = Constituição + Força; corda = Agilidade + Constituição. O XP secundário só aparece quando a modalidade atende aos critérios de performance definidos em `js/config/cardio-data.js`. PRs de performance são direcionados ao atributo que representa aquela performance quando apropriado.
+
+
+## v0.4.2 — Como ler a jornada visual
+
+Cada rota de atributo possui 10 capítulos, nos níveis 5, 10, 15, 20, 25, 30, 35, 40, 45 e 50. A linha no topo resume a jornada inteira sem exigir que o usuário leia todos os cards.
+
+- **Concluído:** etapa já resgatada.
+- **Atual:** próximo capítulo permanente da rota.
+- **Pronto:** nível e objetivos atendidos; pode ser desbloqueado.
+- **Futuro:** ainda depende de nível e/ou objetivos.
+
+Os níveis terminados em 5 são **marcos**. Os níveis 10, 20, 30, 40 e 50 são **evoluções de classe**. A trilha da classe mostra I → II → III → IV → Mestre. Essa apresentação não muda os requisitos mecânicos: nível + objetivos do capítulo continuam necessários.

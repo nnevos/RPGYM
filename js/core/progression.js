@@ -287,7 +287,7 @@ function getActiveBuffs() {
   );
 }
 
-function registerActivity(activityId) {
+function registerActivity(activityId, registerOptions = {}) {
   const activity = ACTIVITIES[activityId];
   if (!activity) {
     showToast("Atividade inválida", "Não foi possível encontrar essa ação.", "⚠");
@@ -309,6 +309,7 @@ function registerActivity(activityId) {
   const xpAwards = Array.isArray(calculation.awards) && calculation.awards.length
     ? calculation.awards
     : [{ attributeKey: effectiveAttribute, xp: calculation.xp, role: "primary" }];
+  const beforeAttributes = Object.fromEntries(xpAwards.map((award) => [award.attributeKey, { level: state.attributes[award.attributeKey].level, xp: state.attributes[award.attributeKey].xp }]));
   const progressEvents = xpAwards.flatMap((award) => addXP(
     award.attributeKey,
     award.xp,
@@ -361,31 +362,35 @@ function registerActivity(activityId) {
   updateUI();
 
   const awardSummary = xpAwards.map((award) => `${ATTRIBUTES[award.attributeKey].name} +${formatNumber(award.xp)}`).join(" • ");
-  showToast(
-    activityId === "cardio" && xpAwards.length > 1 ? `+${formatNumber(calculation.xp)} XP total` : `+${formatNumber(calculation.xp)} XP em ${ATTRIBUTES[effectiveAttribute].name}`,
-    activityId === "cardio" && xpAwards.length > 1
-      ? awardSummary
-      : (calculation.capped ? `${activity.name} registrado. O bônus total atingiu o limite configurado.` : `${activity.name} registrado com sucesso.`),
-    activity.icon
-  );
-
-  if (streakUpdate.changed) {
+  const result = { activityId, activity, calculation, xpAwards, progressEvents, streakUpdate, newlyCompletedMissions, historyEntry, beforeAttributes, awardSummary };
+  if (!registerOptions.deferPresentation) {
     showToast(
-      streakUpdate.reset ? "Novo streak iniciado" : "Streak aumentado",
-      `Sequência atual: ${state.streak.current} ${pluralize(state.streak.current, "dia", "dias")}.`,
-      "🔥"
+      activityId === "cardio" && xpAwards.length > 1 ? `+${formatNumber(calculation.xp)} XP total` : `+${formatNumber(calculation.xp)} XP em ${ATTRIBUTES[effectiveAttribute].name}`,
+      activityId === "cardio" && xpAwards.length > 1
+        ? awardSummary
+        : (calculation.capped ? `${activity.name} registrado. O bônus total atingiu o limite configurado.` : `${activity.name} registrado com sucesso.`),
+      activity.icon
     );
+
+    if (streakUpdate.changed) {
+      showToast(
+        streakUpdate.reset ? "Novo streak iniciado" : "Streak aumentado",
+        `Sequência atual: ${state.streak.current} ${pluralize(state.streak.current, "dia", "dias")}.`,
+        "🔥"
+      );
+    }
+
+    newlyCompletedMissions.forEach((mission) => {
+      showToast(
+        "Missão concluída",
+        `${mission.name} está pronta para resgate.`,
+        "✦"
+      );
+    });
+
+    presentProgressEvents(progressEvents);
   }
-
-  newlyCompletedMissions.forEach((mission) => {
-    showToast(
-      "Missão concluída",
-      `${mission.name} está pronta para resgate.`,
-      "✦"
-    );
-  });
-
-  presentProgressEvents(progressEvents);
+  return result;
 }
 
 function readActivityOptions(activityId) {

@@ -1,10 +1,15 @@
 "use strict";
 
+const debouncedExerciseSearch = debounce(renderExercisePicker, 120);
+const debouncedFoodSearch = debounce(renderFoodSearch, 120);
+const debouncedSocialSearch = debounce(renderSocialSearch, 100);
+
 function toggleCardioPanels(running) {
   const launch = document.getElementById("cardioLaunchPanel");
   const live = document.getElementById("cardioLivePanel");
   if (launch) launch.hidden = running;
   if (live) live.hidden = !running;
+  if (typeof renderLiveSessionIndicators === "function") renderLiveSessionIndicators();
 }
 
 
@@ -212,7 +217,7 @@ function bindEvents() {
 
   document.getElementById("socialSearchToggle")?.addEventListener("click", openSocialSearch);
   document.getElementById("socialSeeGroup")?.addEventListener("click", () => openSocialGroup("agronegocio"));
-  document.getElementById("socialGroupSearch")?.addEventListener("input", renderSocialSearch);
+  document.getElementById("socialGroupSearch")?.addEventListener("input", debouncedSocialSearch);
   document.getElementById("startEmptyWorkout")?.addEventListener("click", startEmptyWorkout);
   document.getElementById("createRoutineButton")?.addEventListener("click", () => openRoutineEditor(false));
   document.getElementById("browseExercisesButton")?.addEventListener("click", () => openExercisePicker("browse"));
@@ -222,13 +227,15 @@ function bindEvents() {
   document.getElementById("actionConfirmCancel")?.addEventListener("click", () => closeActionConfirmation(false));
   document.getElementById("actionConfirmContinue")?.addEventListener("click", () => closeActionConfirmation(true));
   document.getElementById("closeWorkoutResult")?.addEventListener("click", closeWorkoutResult);
+  document.getElementById("closeCardioResult")?.addEventListener("click", closeCardioResult);
+  document.getElementById("profileAchievementsToggle")?.addEventListener("click", () => { showAllAchievements = !showAllAchievements; renderAchievements(); });
   document.getElementById("addExerciseButton")?.addEventListener("click", () => openExercisePicker("workout"));
   document.getElementById("saveWorkoutAsRoutine")?.addEventListener("click", () => { const active=state.workouts.active; if(active?.routineId) openRoutineEditor(false, active.routineId); else openRoutineEditor(true); });
-  document.getElementById("activeWorkoutName")?.addEventListener("input", (event) => { if (state.workouts.active) { state.workouts.active.name = event.target.value; saveGame(); } });
-  document.getElementById("workoutExerciseList")?.addEventListener("input", (event) => { if (event.target.matches("[data-set-field]")) updateWorkoutField(event.target); if (event.target.matches("[data-exercise-note]")) { const ex=findWorkoutExercise(event.target.dataset.exerciseNote); if(ex){ex.notes=event.target.value;saveGame();} } });
+  document.getElementById("activeWorkoutName")?.addEventListener("input", (event) => { if (state.workouts.active) { state.workouts.active.name = event.target.value; scheduleSaveGame(); } });
+  document.getElementById("workoutExerciseList")?.addEventListener("input", (event) => { if (event.target.matches("[data-set-field]")) updateWorkoutField(event.target); if (event.target.matches("[data-exercise-note]")) { const ex=findWorkoutExercise(event.target.dataset.exerciseNote); if(ex){ex.notes=event.target.value;scheduleSaveGame();} } });
   document.getElementById("closeExercisePicker")?.addEventListener("click", closeExercisePicker);
   document.getElementById("confirmExercisePicker")?.addEventListener("click", confirmExercisePicker);
-  document.getElementById("exerciseSearch")?.addEventListener("input", renderExercisePicker);
+  document.getElementById("exerciseSearch")?.addEventListener("input", debouncedExerciseSearch);
   document.getElementById("exerciseMuscleFilter")?.addEventListener("change", renderExercisePicker);
   document.getElementById("exerciseEquipmentFilter")?.addEventListener("change", renderExercisePicker);
   document.getElementById("closeRoutineEditor")?.addEventListener("click", closeRoutineEditor);
@@ -282,7 +289,7 @@ function bindEvents() {
   document.getElementById("dietSaveFood")?.addEventListener("click", saveDietItemEdit);
   document.getElementById("dietDeleteFood")?.addEventListener("click", deleteDietItem);
   document.getElementById("closeFoodPicker")?.addEventListener("click", closeFoodPicker);
-  document.getElementById("foodSearch")?.addEventListener("input", renderFoodSearch);
+  document.getElementById("foodSearch")?.addEventListener("input", debouncedFoodSearch);
   document.getElementById("finishOnboarding")?.addEventListener("click", closeOnboarding);
   document.getElementById("skipOnboarding")?.addEventListener("click", closeOnboarding);
   document.getElementById("onboardingOverlay")?.addEventListener("click", (event) => { if (event.target.id === "onboardingOverlay") closeOnboarding(); });
@@ -318,6 +325,7 @@ function bindEvents() {
   document.getElementById("profileSettingsOverlay")?.addEventListener("click", (event) => { if (event.target.id === "profileSettingsOverlay") closeProfileSettings(); });
   document.getElementById("foodPickerOverlay")?.addEventListener("click", (event) => { if (event.target.id === "foodPickerOverlay") closeFoodPicker(); });
   document.getElementById("dietSettingsOverlay")?.addEventListener("click", (event) => { if (event.target.id === "dietSettingsOverlay") closeDietSettings(); });
+  document.getElementById("cardioResultOverlay")?.addEventListener("click", (event) => { if (event.target.id === "cardioResultOverlay") closeCardioResult(); });
   document.getElementById("dietEditOverlay")?.addEventListener("click", (event) => { if (event.target.id === "dietEditOverlay") closeDietItemEditor(); });
 
   document.getElementById("celebration")?.addEventListener("click", (event) => {
@@ -327,15 +335,21 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !document.getElementById("actionConfirmOverlay")?.hidden) closeActionConfirmation(false);
-    else if (event.key === "Escape" && celebrationOpen) closeCelebration();
-    else if (event.key === "Escape" && !document.getElementById("exercisePickerOverlay")?.hidden) closeExercisePicker();
-    else if (event.key === "Escape" && !document.getElementById("routineEditorOverlay")?.hidden) closeRoutineEditor();
-    else if (event.key === "Escape" && !document.getElementById("helpOverlay")?.hidden) closeHelp();
-    else if (event.key === "Escape" && !document.getElementById("profileSettingsOverlay")?.hidden) closeProfileSettings();
-    else if (event.key === "Escape" && !document.getElementById("dietEditOverlay")?.hidden) closeDietItemEditor();
-    else if (event.key === "Escape" && !document.getElementById("dietSettingsOverlay")?.hidden) closeDietSettings();
-    else if (event.key === "Escape" && !document.getElementById("foodPickerOverlay")?.hidden) closeFoodPicker();
+    if (event.key !== "Escape") return;
+    if (!document.getElementById("actionConfirmOverlay")?.hidden) closeActionConfirmation(false);
+    else if (!document.getElementById("cardioConfirmOverlay")?.hidden) closeCardioConfirmation(false);
+    else if (!document.getElementById("cardioResultOverlay")?.hidden) closeCardioResult();
+    else if (!document.getElementById("workoutResultOverlay")?.hidden) closeWorkoutResult();
+    else if (!document.getElementById("balanceAuditOverlay")?.hidden && typeof closeBalanceAuditPanel === "function") closeBalanceAuditPanel();
+    else if (!document.getElementById("onboardingOverlay")?.hidden) closeOnboarding();
+    else if (celebrationOpen) closeCelebration();
+    else if (!document.getElementById("exercisePickerOverlay")?.hidden) closeExercisePicker();
+    else if (!document.getElementById("routineEditorOverlay")?.hidden) closeRoutineEditor();
+    else if (!document.getElementById("helpOverlay")?.hidden) closeHelp();
+    else if (!document.getElementById("profileSettingsOverlay")?.hidden) closeProfileSettings();
+    else if (!document.getElementById("dietEditOverlay")?.hidden) closeDietItemEditor();
+    else if (!document.getElementById("dietSettingsOverlay")?.hidden) closeDietSettings();
+    else if (!document.getElementById("foodPickerOverlay")?.hidden) closeFoodPicker();
   });
 
   window.addEventListener("resize", () => {
@@ -395,7 +409,8 @@ function setActiveView(viewName, scrollToTop = true) {
   document.title = `${VIEW_TITLES[viewName]} • RPG GYM`;
 
   if (scrollToTop) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
   }
 
   if (viewName === "character") {
@@ -405,10 +420,9 @@ function setActiveView(viewName, scrollToTop = true) {
       attributePanel.hidden = true;
       main.hidden = false;
     }
-    window.setTimeout(drawRadarChart, 80);
-  } else if (viewName === "diet") {
-    renderDiet();
   }
+
+  renderActiveView(viewName);
 }
 
 function resetProgress() {
@@ -424,8 +438,17 @@ function showToast(title, message, icon = "✦", duration = 4_800) {
     return;
   }
 
+  const signature = `${title}::${message}`;
+  const existing = Array.from(region.querySelectorAll(".toast")).find((item) => item.dataset.signature === signature);
+  if (existing) {
+    existing.classList.remove("is-leaving");
+    existing.animate?.([{ opacity: .72 }, { opacity: 1 }], { duration: 180 });
+    return;
+  }
+
   const toast = document.createElement("div");
   toast.className = "toast";
+  toast.dataset.signature = signature;
   toast.setAttribute("role", "status");
 
   const iconElement = document.createElement("span");

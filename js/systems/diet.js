@@ -69,7 +69,7 @@ function calculateFoodNutrition(food, grams) {
 function dietDayTotals(day = getDietDay()) {
   const totals = { calories: 0, carbs: 0, protein: 0, fat: 0, fiber: 0 };
   Object.values(day.meals).flat().forEach((item) => {
-    const food = FOOD_DATABASE.find((entry) => entry.id === item.foodId);
+    const food = FOOD_BY_ID.get(Number(item.foodId));
     if (!food) return;
     const nutrition = calculateFoodNutrition(food, item.grams);
     Object.keys(totals).forEach((key) => totals[key] += nutrition[key] || 0);
@@ -100,9 +100,9 @@ function renderDiet() {
   const meals = document.getElementById("dietMeals");
   meals.innerHTML = Object.entries(mealLabels).map(([mealKey,label]) => {
     const items = day.meals[mealKey] || [];
-    const mealCalories=items.reduce((sum,item)=>{const f=FOOD_DATABASE.find(e=>e.id===item.foodId);return sum+(f?calculateFoodNutrition(f,item.grams).calories:0)},0);
+    const mealCalories=items.reduce((sum,item)=>{const f=FOOD_BY_ID.get(Number(item.foodId));return sum+(f?calculateFoodNutrition(f,item.grams).calories:0)},0);
     const rows = items.map((item) => {
-      const food=FOOD_DATABASE.find((entry)=>entry.id===item.foodId); if(!food) return "";
+      const food=FOOD_BY_ID.get(Number(item.foodId)); if(!food) return "";
       const n=calculateFoodNutrition(food,item.grams);
       return `<button class="diet-food-row" type="button" data-edit-food="${escapeHtml(item.id)}" data-meal-key="${mealKey}"><div><strong>${escapeHtml(food.name)}</strong><small>${Math.round(item.grams)} g · C ${n.carbs.toFixed(1)} · P ${n.protein.toFixed(1)} · G ${n.fat.toFixed(1)}</small></div><span>${Math.round(n.calories)} kcal</span><i aria-hidden="true">›</i></button>`;
     }).join("");
@@ -114,7 +114,7 @@ function renderDiet() {
 }
 
 function normalizeSearchText(value) {
-  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  return runtimeSearchText(value);
 }
 
 function openFoodPicker(mealKey) {
@@ -137,13 +137,13 @@ const FOOD_SEARCH_ALIASES = {
   "mussarela": "mucarela", "macarrao": "macarrao", "miojo": "miojo", "aipim": "mandioca", "macaxeira": "mandioca"
 };
 
-function foodSearchScore(food, rawQuery) {
+function foodSearchScore(food, rawQuery, indexedText = "") {
   if (!rawQuery) return food.common === false ? 0 : 1;
   const normalized = normalizeSearchText(rawQuery).trim();
   const alias = FOOD_SEARCH_ALIASES[normalized] || normalized;
   const tokens = alias.split(/\s+/).filter(Boolean);
   const foodAliases = Array.isArray(food.aliases) ? food.aliases.join(" ") : "";
-  const haystack = normalizeSearchText(`${food.name} ${food.group} ${foodAliases}`);
+  const haystack = indexedText || normalizeSearchText(`${food.name} ${food.group} ${foodAliases}`);
   if (!tokens.every(token => haystack.includes(token))) return 0;
   let score = food.common === false ? 4 : 14;
   const name = normalizeSearchText(food.name);
@@ -223,7 +223,7 @@ function renderFoodSearch() {
   if (!query) {
     setText("foodSearchCount", `${FOOD_COMMON_DATABASE.length} alimentos principais`);
     const favoriteFoods=(data.favoriteFoodIds||[])
-      .map(id=>FOOD_DATABASE.find(food=>food.id===Number(id)))
+      .map(id=>FOOD_BY_ID.get(Number(id)))
       .filter(Boolean);
 
     let html="";
@@ -235,15 +235,15 @@ function renderFoodSearch() {
 
     html += `<div class="food-browser-heading food-types-heading"><div><strong>Alimentos por tipo</strong></div><small>${FOOD_GROUP_ORDER.length} categorias</small></div>`;
     for (const groupName of FOOD_GROUP_ORDER) {
-      const foods=FOOD_COMMON_DATABASE.filter(food=>food.group===groupName).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
+      const foods=FOOD_COMMON_BY_GROUP.get(groupName) || [];
       html += renderFoodGroup(groupName, foods, favorites);
     }
     container.innerHTML=html;
     return;
   }
 
-  const results=FOOD_DATABASE
-    .map(food=>({food,score:foodSearchScore(food,query)}))
+  const results=FOOD_SEARCH_INDEX
+    .map(({food,text})=>({food,score:foodSearchScore(food,query,text)}))
     .filter(entry=>entry.score>0)
     .sort((a,b)=>b.score-a.score || a.food.name.localeCompare(b.food.name,"pt-BR"))
     .slice(0,80)
@@ -256,7 +256,7 @@ function renderFoodSearch() {
 }
 
 function addFoodToMeal(foodId) {
-  const food=FOOD_DATABASE.find(entry=>entry.id===Number(foodId)); if(!food) return;
+  const food=FOOD_BY_ID.get(Number(foodId)); if(!food) return;
   const gramsInput=document.querySelector(`[data-food-grams="${food.id}"]`);
   const grams=Math.max(1,Math.min(2000,Number(gramsInput?.value)||100));
   const day=getDietDay(); day.finalized=false;
@@ -280,7 +280,7 @@ function ensureDietEditable(onContinue) {
 function openDietItemEditor(mealKey,itemId) {
   ensureDietEditable(()=>{
     const item=(getDietDay().meals[mealKey]||[]).find(entry=>entry.id===itemId); if(!item)return;
-    const food=FOOD_DATABASE.find(entry=>entry.id===item.foodId); if(!food)return;
+    const food=FOOD_BY_ID.get(Number(item.foodId)); if(!food)return;
     editingDietItem={mealKey,itemId};
     setText("dietEditTitle",food.name);
     const n=calculateFoodNutrition(food,item.grams);

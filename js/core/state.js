@@ -15,6 +15,7 @@ function init() {
   updateUI();
   setActiveView("social", false);
   window.setTimeout(() => openOnboarding(false), 220);
+  window.addEventListener("pagehide", flushScheduledSave, { passive: true });
 
   window.setInterval(() => {
     const previousDailyKey = state.missions.dailyKey;
@@ -30,8 +31,7 @@ function init() {
       previousWeeklyKey !== state.missions.weeklyKey
     ) {
       saveGame();
-      renderMissions();
-      renderDashboard();
+      renderActiveView(activeView);
     }
   }, 60_000);
 }
@@ -487,6 +487,10 @@ function migrateState(rawState, fallback = createDefaultState()) {
 }
 
 function saveGame() {
+  if (pendingSaveTimer) {
+    window.clearTimeout(pendingSaveTimer);
+    pendingSaveTimer = null;
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     return true;
@@ -499,6 +503,21 @@ function saveGame() {
     );
     return false;
   }
+}
+
+function scheduleSaveGame(delay = 180) {
+  window.clearTimeout(pendingSaveTimer);
+  pendingSaveTimer = window.setTimeout(() => {
+    pendingSaveTimer = null;
+    saveGame();
+  }, delay);
+}
+
+function flushScheduledSave() {
+  if (!pendingSaveTimer) return;
+  window.clearTimeout(pendingSaveTimer);
+  pendingSaveTimer = null;
+  saveGame();
 }
 
 function normalizeTemporalState() {

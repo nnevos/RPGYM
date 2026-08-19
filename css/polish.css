@@ -1,0 +1,318 @@
+/* RPG GYM — latest UX, responsive and accessibility polish. Loaded last. */
+/* v0.4.4 — camada final de auditoria e polimento geral de UI/UX */
+:root {
+  --tap-target: 44px;
+  --section-gap: 18px;
+  --content-mobile-pad: 14px;
+}
+
+/* Hierarquia consistente das cinco áreas principais */
+#view-social .social-app-shell,
+#view-training .strength-workout-shell,
+#view-cardio,
+#view-character .profile-reference-page {
+  width: min(100%, 780px);
+  margin-inline: auto;
+}
+
+.workout-page-head,
+.compact-page-heading,
+.profile-reference-header,
+.social-home-header {
+  min-height: 58px;
+  margin-bottom: 14px;
+}
+
+.workout-page-head h2,
+.compact-page-heading h2,
+.profile-reference-header h2,
+.social-home-header h2 {
+  letter-spacing: -.025em;
+}
+
+.workout-page-head p,
+.social-subtitle,
+.profile-section-title-row p,
+.cardio-type-hint {
+  color: var(--text-soft) !important;
+}
+
+/* Navegação: sinal discreto para sessões que continuam em segundo plano */
+.nav-item,
+.mobile-nav-item { position: relative; }
+.nav-item.has-live-session::after,
+.mobile-nav-item.has-live-session::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 0 3px rgba(216,255,98,.12), 0 0 12px rgba(216,255,98,.45);
+}
+.nav-item.has-live-session::after { right: 12px; top: 12px; }
+.mobile-nav-item.has-live-session::after { right: calc(50% - 18px); top: 6px; }
+
+/* Treino */
+.workout-minimal-shell,
+.strength-hub,
+.active-workout { min-width: 0; }
+.active-workout-topbar {
+  background: rgba(13,15,20,.96) !important;
+  border-bottom: 1px solid var(--border) !important;
+  backdrop-filter: blur(16px);
+}
+.workout-live-stats {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  width: min(100%, 390px) !important;
+  gap: 6px !important;
+}
+.workout-live-stats span {
+  min-width: 0;
+  padding: 8px 6px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.035);
+  text-align: center !important;
+}
+.workout-live-stats small,
+.workout-live-stats strong { display:block; text-align:center !important; }
+.workout-live-stats small { color:var(--muted) !important; font-size:.64rem; }
+.workout-live-stats strong { margin-top:2px; font-size:.86rem; }
+.workout-exercise-card { overflow: clip; }
+.set-input { min-width: 0; }
+.workout-empty,
+.routine-empty-minimal,
+.exercise-picker-empty,
+.routine-draft-empty {
+  border: 1px dashed rgba(255,255,255,.11);
+  background: rgba(255,255,255,.025) !important;
+  color: var(--text-soft) !important;
+}
+.workout-empty > span { display:none; }
+
+/* Cardio */
+.cardio-reference-card { box-shadow: none !important; }
+.cardio-start-meta {
+  width: min(100%, 520px);
+  margin-inline:auto;
+}
+.cardio-type-hint {
+  max-width: 42ch;
+  margin-inline:auto !important;
+  text-align:center;
+}
+.cardio-history-section {
+  width: min(100%, 620px);
+  margin: 14px auto 0 !important;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(18,20,26,.72);
+  overflow: clip;
+}
+.cardio-history-heading { min-height: 54px; }
+.cardio-history-list:not([hidden]) { border-top: 1px solid var(--border); }
+.cardio-history-empty { padding: 22px 16px !important; }
+.cardio-confirm-note { color: var(--text-soft) !important; }
+
+/* Dieta: menos cinza solto e mais coerência com o dark mode */
+.diet-reference-shell { box-shadow:none !important; }
+.diet-meal-card {
+  background:#171a21 !important;
+  border-color: var(--border) !important;
+}
+.diet-food-row {
+  background:#13161c !important;
+  border-color:var(--border) !important;
+}
+.diet-food-row:hover { background:#181c24 !important; }
+.diet-add-food {
+  background:rgba(155,123,255,.16) !important;
+  color:#e6ddff !important;
+  border:1px solid rgba(155,123,255,.24) !important;
+}
+.diet-add-food:hover { background:rgba(155,123,255,.23) !important; }
+.diet-empty-compact { color:var(--muted) !important; }
+.food-result-list,
+.exercise-picker-results { overscroll-behavior: contain; }
+
+/* Perfil */
+.profile-reference-page > section { scroll-margin-top: 18px; }
+.profile-identity-card,
+.profile-next-section,
+.profile-attributes-section,
+.profile-week-section,
+.profile-achievements-section {
+  border-color: var(--border) !important;
+}
+.profile-section-title-row { gap:12px; }
+.profile-attribute-button,
+.profile-next-card { -webkit-tap-highlight-color: transparent; }
+.profile-attribute-button:active,
+.profile-next-card:active { transform: scale(.995); }
+.attribute-roadmap-list { gap:10px !important; }
+
+/* Social */
+.social-mission-stack,
+.social-member-list { gap:10px; }
+.social-empty-state {
+  border:1px dashed var(--border);
+  border-radius:14px;
+  background:rgba(255,255,255,.025);
+  color:var(--text-soft);
+}
+
+/* Modais: comportamento previsível e rolagem interna */
+.modal-open { overflow:hidden !important; touch-action:none; }
+.onboarding-overlay,
+.help-overlay,
+.profile-settings-overlay,
+.balance-audit-overlay,
+.workout-modal-overlay,
+.action-confirm-overlay,
+.workout-result-overlay,
+.cardio-confirm-overlay,
+.cardio-result-overlay,
+.food-picker-overlay,
+.diet-settings-overlay,
+.diet-edit-overlay,
+.celebration {
+  overscroll-behavior: contain;
+}
+.onboarding-modal,
+.help-modal,
+.profile-settings-modal,
+.balance-audit-modal,
+.workout-modal,
+.action-confirm-modal,
+.workout-result-modal,
+.cardio-confirm-card,
+.cardio-result-modal,
+.food-picker-modal,
+.diet-settings-modal,
+.diet-edit-modal {
+  max-height: min(90dvh, 900px) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.action-confirm-primary[aria-busy="true"],
+.cardio-continue-confirm[aria-busy="true"] { opacity:.7; cursor:wait; }
+
+/* Controles: leitura e clique mais seguros */
+button, [role="button"], select, input { -webkit-tap-highlight-color: transparent; }
+button { touch-action: manipulation; }
+input, select { color: var(--text); }
+::placeholder { color:#777f8d; opacity:1; }
+
+@media (hover:hover) and (pointer:fine) {
+  .primary-button:hover,
+  .secondary-button:hover,
+  .add-exercise-main:hover,
+  .save-routine-inline:hover { filter:brightness(1.06); }
+}
+
+@media (max-width: 900px) {
+  .main-content { padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important; }
+  .mobile-nav {
+    padding-bottom: max(7px, env(safe-area-inset-bottom)) !important;
+    min-height: calc(66px + env(safe-area-inset-bottom));
+  }
+  .mobile-nav-item { min-height: 52px; }
+}
+
+@media (max-width: 720px) {
+  .main-content { padding-inline: var(--content-mobile-pad) !important; }
+  .workout-page-head,
+  .compact-page-heading,
+  .profile-reference-header,
+  .social-home-header { margin-bottom: 10px; }
+
+  .active-workout { margin-inline: calc(var(--content-mobile-pad) * -1) !important; }
+  .active-workout-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 24;
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .active-workout-title-row { padding-inline:14px !important; }
+  .workout-exercise-list,
+  .active-workout > .add-exercise-main,
+  .active-workout > .save-routine-inline { margin-inline:14px !important; width:calc(100% - 28px) !important; }
+  .workout-live-stats { max-width:none !important; }
+
+  .cardio-start-orb { width:min(320px, 84vw) !important; height:min(320px, 84vw) !important; }
+  .cardio-history-section { margin-top:12px !important; }
+
+  .diet-reference-shell { border-radius:18px !important; }
+  .diet-meals { padding:10px !important; gap:10px !important; }
+
+  .profile-reference-page { padding-bottom:8px; }
+  .profile-identity-card,
+  .profile-next-section,
+  .profile-attributes-section,
+  .profile-week-section,
+  .profile-achievements-section { border-radius:16px !important; }
+
+  .onboarding-overlay,
+  .help-overlay,
+  .profile-settings-overlay,
+  .balance-audit-overlay,
+  .workout-modal-overlay,
+  .action-confirm-overlay,
+  .workout-result-overlay,
+  .cardio-confirm-overlay,
+  .cardio-result-overlay,
+  .food-picker-overlay,
+  .diet-settings-overlay,
+  .diet-edit-overlay {
+    padding:0 !important;
+    place-items:end center !important;
+  }
+  .onboarding-modal,
+  .help-modal,
+  .profile-settings-modal,
+  .balance-audit-modal,
+  .workout-modal,
+  .action-confirm-modal,
+  .workout-result-modal,
+  .cardio-confirm-card,
+  .cardio-result-modal,
+  .food-picker-modal,
+  .diet-settings-modal,
+  .diet-edit-modal {
+    width:100% !important;
+    max-height:92dvh !important;
+    border-radius:24px 24px 0 0 !important;
+    padding-bottom:max(18px, env(safe-area-inset-bottom)) !important;
+  }
+}
+
+@media (pointer:coarse) {
+  button,
+  .nav-item,
+  .mobile-nav-item,
+  .profile-icon-button,
+  .help-button,
+  .mini-help-button,
+  .diet-help-button,
+  .diet-targets-button,
+  .set-complete-button,
+  .set-timer-button,
+  .modal-link,
+  .social-icon-button,
+  .social-back-button {
+    min-height: var(--tap-target);
+    min-width: var(--tap-target);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior:auto !important; }
+  *, *::before, *::after {
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
+  }
+}

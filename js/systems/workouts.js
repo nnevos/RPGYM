@@ -1,5 +1,7 @@
 "use strict";
 
+const EXERCISE_PICKER_CATEGORIES = new Set(["forca", "powerlifting", "levantamento-olimpico", "strongman", "pliometria", "alongamento"]);
+
 function ensureWorkoutState() {
   if (!state.workouts || typeof state.workouts !== "object") {
     state.workouts = { active: null, routines: [], sessions: [] };
@@ -9,7 +11,7 @@ function ensureWorkoutState() {
 }
 
 function getExerciseById(exerciseId) {
-  return EXERCISE_DATABASE.find((exercise) => exercise.id === exerciseId) || null;
+  return EXERCISE_BY_ID.get(String(exerciseId)) || null;
 }
 
 function humanizeToken(value) {
@@ -131,6 +133,7 @@ function startEmptyWorkout() {
   };
   saveGame();
   renderStrengthTraining();
+  if (typeof renderLiveSessionIndicators === "function") renderLiveSessionIndicators();
   openExercisePicker("workout");
 }
 
@@ -144,6 +147,7 @@ function startRoutineWorkout(routineId) {
   };
   saveGame();
   renderStrengthTraining();
+  if (typeof renderLiveSessionIndicators === "function") renderLiveSessionIndicators();
 }
 
 function requestConfirmation({ title, message, confirmLabel = "Confirmar", cancelLabel = "Voltar", danger = false, icon = "!", details = [] }, onConfirm) {
@@ -157,6 +161,7 @@ function requestConfirmation({ title, message, confirmLabel = "Confirmar", cance
   setText("actionConfirmCancel", cancelLabel);
   const confirmButton = document.getElementById("actionConfirmContinue");
   confirmButton?.classList.toggle("is-danger", danger);
+  if (confirmButton) { confirmButton.disabled = false; confirmButton.removeAttribute("aria-busy"); }
   const detailsBox = document.getElementById("actionConfirmDetails");
   if (detailsBox) {
     detailsBox.hidden = !details.length;
@@ -172,7 +177,13 @@ function closeActionConfirmation(runAction = false) {
   document.body.classList.remove("modal-open");
   const action = confirmationAction;
   confirmationAction = null;
-  if (runAction) action?.();
+  if (runAction && action) {
+    const confirmButton = document.getElementById("actionConfirmContinue");
+    if (confirmButton) { confirmButton.disabled = true; confirmButton.setAttribute("aria-busy", "true"); }
+    try { action(); } finally {
+      if (confirmButton) { confirmButton.disabled = false; confirmButton.removeAttribute("aria-busy"); }
+    }
+  }
 }
 
 function cancelWorkout() {
@@ -196,6 +207,7 @@ function cancelWorkout() {
     ]
   }, () => {
     state.workouts.active = null;
+    if (typeof renderLiveSessionIndicators === "function") renderLiveSessionIndicators();
     stopRestTimer();
     stopWorkoutElapsedTicker();
     saveGame();
@@ -345,7 +357,8 @@ function updateWorkoutField(target) {
   const set = findWorkoutSet(exerciseInstanceId, setId);
   if (!set) return;
   set[field] = target.value;
-  saveGame(); updateWorkoutLiveStats();
+  scheduleSaveGame();
+  updateWorkoutLiveStats();
 }
 
 function updateWorkoutLiveStats() {
@@ -539,6 +552,7 @@ function finalizeStrengthWorkout() {
   state.history=state.history.slice(0,1000);
   rebuildStatsFromSources();
   state.workouts.active=null;
+  if (typeof renderLiveSessionIndicators === "function") renderLiveSessionIndicators();
   stopWorkoutElapsedTicker(); stopRestTimer(); stopExerciseSetTimer(true);
   const missions=refreshMissionProgress(); syncDerivedState(); saveGame(); updateUI();
   workoutResultProgressEvents=progressEvents;
@@ -554,9 +568,19 @@ function showWorkoutResult(session,calc,beforeForce,streakUpdate) {
   const pct=force.level>=MAX_LEVEL?100:Math.min(100,(force.xp/needed)*100);
   setText("workoutResultTitle",session.name || "Treino concluído");
   setText("workoutResultXp",`+${formatNumber(calc.xp)} XP`);
-  const repeatText = calc.categoryMultiplier < 1 ? ` • ${Math.round(calc.categoryMultiplier*100)}% por repetição no dia` : "";
-  const prText = calc.rewardedPrCount ? ` • +${calc.performanceBonusXp} XP por PR` : "";
-  setText("workoutResultXpBreakdown",`${formatNumber(calc.baseXp)} XP base${prText}${repeatText} • +${Math.round(calc.appliedBonus*100)}% bônus`);
+  const breakdown = document.getElementById("workoutResultXpBreakdown");
+  if (breakdown) {
+    const completion = Math.round(BALANCE.workout.completionXp * calc.completionMultiplier);
+    const setsXp = Math.max(0, Math.round(calc.rawBaseXp - completion - calc.performanceBonusXp));
+    const rows = [
+      ["Conclusão do treino", completion],
+      ["Séries válidas", setsXp],
+      ...(calc.performanceBonusXp ? [[`${calc.rewardedPrCount} PR${calc.rewardedPrCount > 1 ? "s" : ""}`, calc.performanceBonusXp]] : [])
+    ];
+    breakdown.innerHTML = rows.map(([label,value]) => `<span><em>${escapeHtml(label)}</em><strong>+${formatNumber(value)} XP</strong></span>`).join("")
+      + `<span class="is-muted"><em>Bônus aplicado</em><strong>+${Math.round(calc.appliedBonus*100)}%</strong></span>`
+      + (calc.categoryMultiplier < 1 ? `<span class="is-muted"><em>Repetição no mesmo dia</em><strong>${Math.round(calc.categoryMultiplier*100)}%</strong></span>` : "");
+  }
   setText("workoutResultForceLevel",`Força • Nv. ${force.level}`);
   setText("workoutResultForceProgress",force.level>=MAX_LEVEL?"Nível máximo":`${formatNumber(force.xp)} / ${formatNumber(needed)} XP`);
   const bar=document.getElementById("workoutResultForceBar"); if(bar) bar.style.width=`${pct}%`;
@@ -568,7 +592,9 @@ function showWorkoutResult(session,calc,beforeForce,streakUpdate) {
   const prSummary=calc.rewardedPrCount?`<strong>${calc.rewardedPrCount} novo${calc.rewardedPrCount>1?"s":""} PR${calc.rewardedPrCount>1?"s":""}!</strong> `:"";
   const repeatSummary=calc.categoryMultiplier<1?`Retorno reduzido por ser outro treino de musculação no mesmo dia. `:"";
   const streakText=streakUpdate.changed?`Streak atual: ${formatDays(state.streak.current)}.`:"";
-  const bonus=document.getElementById("workoutResultBonus"); if(bonus) bonus.innerHTML=`${levelText}${prSummary}${repeatSummary}${streakText || "Progresso salvo automaticamente."}`;
+  const remainingXp = force.level >= MAX_LEVEL ? 0 : Math.max(0, needed - force.xp);
+  const proximity = force.level < MAX_LEVEL && remainingXp <= Math.max(80, needed * .18) ? `<strong>Quase lá:</strong> faltam ${formatNumber(Math.ceil(remainingXp))} XP para Força Nv. ${force.level + 1}. ` : "";
+  const bonus=document.getElementById("workoutResultBonus"); if(bonus) bonus.innerHTML=`${levelText}${prSummary}${repeatSummary}${proximity}${streakText || "Progresso salvo automaticamente."}`;
   overlay.hidden=false; document.body.classList.add("modal-open");
 }
 
@@ -601,19 +627,28 @@ function closeExercisePicker() {
 function populateExerciseFilters() {
   const muscle=document.getElementById("exerciseMuscleFilter"), equipment=document.getElementById("exerciseEquipmentFilter");
   if(muscle && muscle.options.length===1) {
-    [...new Set(EXERCISE_DATABASE.flatMap(ex=>ex.primaryMuscles))].sort().forEach(value=>muscle.add(new Option(humanizeToken(value),value)));
+    EXERCISE_MUSCLES.forEach((value)=>muscle.add(new Option(humanizeToken(value),value)));
   }
   if(equipment && equipment.options.length===1) {
-    [...new Set(EXERCISE_DATABASE.map(ex=>ex.equipment).filter(Boolean))].sort().forEach(value=>equipment.add(new Option(humanizeToken(value),value)));
+    EXERCISE_EQUIPMENT.forEach((value)=>equipment.add(new Option(humanizeToken(value),value)));
   }
 }
 function renderExercisePicker() {
   const container=document.getElementById("exercisePickerResults"); if(!container) return;
-  const search=(document.getElementById("exerciseSearch")?.value||"").trim().toLocaleLowerCase("pt-BR");
+  const search=runtimeSearchText(document.getElementById("exerciseSearch")?.value||"");
   const muscle=document.getElementById("exerciseMuscleFilter")?.value||"all";
   const equipment=document.getElementById("exerciseEquipmentFilter")?.value||"all";
-  const allowedCategories=new Set(["forca","powerlifting","levantamento-olimpico","strongman","pliometria","alongamento"]);
-  const results=EXERCISE_DATABASE.filter(ex=>allowedCategories.has(ex.category)).filter(ex=>muscle==="all"||ex.primaryMuscles.includes(muscle)).filter(ex=>equipment==="all"||ex.equipment===equipment).filter(ex=>!search||`${ex.name} ${ex.primaryMuscles.join(" ")} ${ex.equipment}`.toLocaleLowerCase("pt-BR").includes(search)).slice(0,120);
+  const allowedCategories=EXERCISE_PICKER_CATEGORIES;
+  const results=[];
+  for (const indexed of EXERCISE_SEARCH_INDEX) {
+    const ex=indexed.exercise;
+    if (!allowedCategories.has(ex.category)) continue;
+    if (muscle!=="all" && !ex.primaryMuscles.includes(muscle)) continue;
+    if (equipment!=="all" && ex.equipment!==equipment) continue;
+    if (search && !indexed.text.includes(search)) continue;
+    results.push(ex);
+    if (results.length >= 120) break;
+  }
   if(!results.length){container.innerHTML=`<div class="exercise-picker-empty">Nenhum exercício encontrado.</div>`;return;}
   container.innerHTML=results.map(ex=>{const selected=pickerSelectedIds.has(ex.id); const muscleName=ex.primaryMuscles[0]||"força"; const browse=pickerTarget==="browse"; return `<button class="exercise-picker-item ${selected?"is-selected":""}" type="button" ${browse?`data-show-exercise-info="${escapeHtml(ex.id)}"`:`data-pick-exercise="${escapeHtml(ex.id)}"`}><span class="picker-muscle-icon">${muscleIcon(muscleName)}</span><span class="picker-exercise-copy"><strong>${escapeHtml(ex.name)}</strong><small>${escapeHtml(humanizeToken(muscleName))} • ${escapeHtml(humanizeToken(ex.equipment))} • ${escapeHtml(humanizeToken(ex.level))}</small></span><span class="picker-check">${browse?"ℹ":(selected?"✓":"＋")}</span></button>`}).join("");
 }

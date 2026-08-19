@@ -184,3 +184,28 @@ function setProgress(trackId, barId, percentage) {
     bar.style.width = `${value}%`;
   }
 }
+
+/* Lightweight scheduling helpers used by search fields and high-frequency inputs. */
+function debounce(fn, wait = 120) {
+  let timer = null;
+  return function debounced(...args) {
+    const context = this;
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => fn.apply(context, args), wait);
+  };
+}
+
+function throttleFrame(fn) {
+  let scheduled = false;
+  let lastArgs = null;
+  return function frameThrottled(...args) {
+    lastArgs = args;
+    if (scheduled) return;
+    scheduled = true;
+    window.requestAnimationFrame(() => {
+      scheduled = false;
+      fn.apply(this, lastArgs || []);
+      lastArgs = null;
+    });
+  };
+}
