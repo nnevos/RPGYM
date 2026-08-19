@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "rpgym-v0.6.8";
+const CACHE_NAME = "rpgym-v0.6.9";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,6 +10,11 @@ const APP_SHELL = [
   "./css/systems.css",
   "./css/polish.css",
   "./css/auth.css",
+  "./icons/nav/social.png",
+  "./icons/nav/training.png",
+  "./icons/nav/cardio.png",
+  "./icons/nav/diet.png",
+  "./icons/nav/profile.png",
   "./js/config/supabase-config.js",
   "./js/config/game-config.js",
   "./js/config/balance-config.js",

@@ -539,7 +539,7 @@ select option { background: #20232b !important; color: var(--text) !important; }
 .mobile-nav { background: #a58cff !important; }
 .mobile-nav-item { color: rgba(255,255,255,.78) !important; }
 .mobile-nav-item.is-active { color: #fff !important; }
-.mobile-nav-item.is-active > span { background: #7550f4 !important; }
+.mobile-nav-item.is-active > .nav-icon { background: #7550f4 !important; }
 
 /* Treino inteiro em modo escuro */
 .strength-workout-shell, .active-workout { background: #101218 !important; color: var(--text) !important; }

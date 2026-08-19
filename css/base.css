@@ -2593,3 +2593,32 @@ button:disabled {
   }
 }
 
+
+/* v0.6.9 - icones personalizados da navegacao */
+.nav-icon img {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  opacity: .72;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.nav-item.is-active .nav-icon img,
+.mobile-nav-item.is-active .nav-icon img {
+  opacity: 1;
+}
+.nav-item:hover .nav-icon img { opacity: .95; }
+@media (max-width: 820px) {
+  .mobile-nav-item .nav-icon {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+  .mobile-nav-item .nav-icon img {
+    width: 21px;
+    height: 21px;
+  }
+  .mobile-nav-item.is-active .nav-icon img { transform: scale(1.04); }
+}
