@@ -398,6 +398,16 @@ async function handleResetPassword(event) {
   }
 }
 
+function withAuthTimeout(promise, timeoutMs = 10000, message = "A conexão demorou demais para responder.") {
+  let timer = null;
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject) => {
+      timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    })
+  ]).finally(() => window.clearTimeout(timer));
+}
+
 function authFriendlyError(error) {
   const message = String(error?.message || error || "Erro desconhecido");
   const normalized = message.toLowerCase();
@@ -411,11 +421,15 @@ function authFriendlyError(error) {
 
 async function loadOrCreateProfile(session) {
   const user = session.user;
-  const { data, error } = await supabaseClient
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data, error } = await withAuthTimeout(
+    supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle(),
+    10000,
+    "O Supabase demorou demais para carregar seu perfil. Verifique a conexão e tente novamente."
+  );
 
   if (error) throw error;
   if (data) return data;
@@ -426,11 +440,15 @@ async function loadOrCreateProfile(session) {
     display_name: user.user_metadata?.display_name || "Jogador",
     phone: user.user_metadata?.phone || null
   };
-  const { data: inserted, error: insertError } = await supabaseClient
-    .from("profiles")
-    .insert(fallback)
-    .select("*")
-    .single();
+  const { data: inserted, error: insertError } = await withAuthTimeout(
+    supabaseClient
+      .from("profiles")
+      .insert(fallback)
+      .select("*")
+      .single(),
+    10000,
+    "O Supabase demorou demais para criar seu perfil. Verifique a conexão e tente novamente."
+  );
   if (insertError) throw insertError;
   return inserted;
 }
@@ -874,7 +892,11 @@ async function bootstrapSupabaseAuth() {
   authStateSubscription = listener.subscription;
 
   try {
-    const { data, error } = await supabaseClient.auth.getSession();
+    const { data, error } = await withAuthTimeout(
+      supabaseClient.auth.getSession(),
+      10000,
+      "A autenticação demorou demais para responder. Verifique a conexão e tente novamente."
+    );
     if (error) throw error;
     // PASSWORD_RECOVERY is emitted during URL session detection. Give it a brief
     // chance to take ownership of the screen before opening the normal app.

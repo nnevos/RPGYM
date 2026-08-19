@@ -1,4 +1,4 @@
-# RPG GYM v0.6.0
+# RPG GYM v0.6.3
 
 Beta utilizável por amigos. O projeto continua em HTML, CSS e JavaScript puro, com Supabase para autenticação, save e recursos sociais.
 
@@ -31,7 +31,7 @@ Ele adiciona a exclusão segura de conta, reafirma grants/RLS usados pelo navega
 - `supabase/` — migrações SQL.
 - `service-worker.js` / `manifest.webmanifest` — PWA e cache offline.
 
-## v0.6
+## v0.6 / v0.6.3 Beta Fix
 A versão fecha três frentes:
 - estabilidade/sincronização: conflitos, modo offline, backup e correção histórica;
 - conta/segurança: senha, exclusão de conta, RLS e upload restrito;

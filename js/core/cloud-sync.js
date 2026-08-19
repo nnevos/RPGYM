@@ -10,6 +10,16 @@ let cloudLastServerUpdatedAt = null;
 let cloudSyncDisabled = false;
 let cloudDirtyWhileOffline = false;
 
+function withCloudTimeout(promise, timeoutMs = 8000) {
+  let timer = null;
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject) => {
+      timer = window.setTimeout(() => reject(new Error("Tempo limite ao carregar o save da nuvem.")), timeoutMs);
+    })
+  ]).finally(() => window.clearTimeout(timer));
+}
+
 function cloudSyncAvailable() {
   return !cloudSyncDisabled && Boolean(supabaseClient && authSession?.user?.id);
 }
@@ -70,10 +80,16 @@ async function preloadCloudSaveForUser() {
   if (cloudHydratedForUser === userId) return { source: "cached" };
 
   updateCloudStatusLabel("syncing");
-  const { data, error } = await supabaseClient.from(CLOUD_SYNC_TABLE)
-    .select("game_state,diet_state,updated_at").eq("user_id", userId).maybeSingle();
-
-  if (error) {
+  let data = null;
+  try {
+    const result = await withCloudTimeout(
+      supabaseClient.from(CLOUD_SYNC_TABLE)
+        .select("game_state,diet_state,updated_at").eq("user_id", userId).maybeSingle(),
+      8000
+    );
+    if (result.error) throw result.error;
+    data = result.data;
+  } catch (error) {
     console.warn("Cloud save indisponível; mantendo dados locais.", error);
     updateCloudStatusLabel("error");
     return { source: "local", reason: "cloud_error", error };

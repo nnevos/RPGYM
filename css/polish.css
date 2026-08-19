@@ -399,6 +399,8 @@ input, select { color: var(--text); }
 .history-edit-button:hover,.history-edit-button:focus-visible { color:#fff; text-decoration:underline; }
 .form-note { margin:0; color:#aeb4c2; font-size:.78rem; line-height:1.45; }
 .sync-conflict-overlay,.account-action-overlay,.history-edit-overlay { position:fixed; inset:0; z-index:260; display:grid; place-items:center; padding:20px; background:rgba(3,4,8,.82); backdrop-filter:blur(10px); }
+/* The sync conflict can be requested before auth boot finishes. Keep it above the launch/auth layer (z-index:9999) so the app never waits for an invisible decision. */
+.sync-conflict-overlay { z-index:10020; }
 .sync-conflict-overlay[hidden],.account-action-overlay[hidden],.history-edit-overlay[hidden] { display:none !important; }
 .sync-conflict-modal,.account-action-modal,.history-edit-modal { width:min(100%,520px); max-height:min(88dvh,760px); overflow:auto; background:#11131a; border:1px solid rgba(255,255,255,.1); border-radius:24px; padding:20px; box-shadow:0 24px 90px rgba(0,0,0,.45); }
 .sync-conflict-modal header,.account-action-modal header,.history-edit-modal header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; }
