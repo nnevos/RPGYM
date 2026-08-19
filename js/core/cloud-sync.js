@@ -11,6 +11,8 @@ let cloudLastServerUpdatedAt = null;
 let cloudSyncDisabled = false;
 let cloudDirtyWhileOffline = false;
 let cloudReconnectInFlight = null;
+let cloudInitialReconcileComplete = false;
+let cloudBootLocalSnapshot = null;
 
 function withCloudTimeout(promise, timeoutMs = 8000) {
   let timer = null;
@@ -45,6 +47,12 @@ function getLocalSaveSnapshot() {
   try { const raw = localStorage.getItem(getGameStorageKey()); if (raw) game = JSON.parse(raw); } catch (_error) {}
   try { const raw = localStorage.getItem(getScopedStorageKey(DIET_STORAGE_KEY)); if (raw) diet = JSON.parse(raw); } catch (_error) {}
   return { game, diet };
+}
+
+
+function prepareCloudBootstrapSnapshot() {
+  cloudBootLocalSnapshot = getLocalSaveSnapshot();
+  cloudInitialReconcileComplete = false;
 }
 
 function localSnapshotTimestamp(snapshot) {
@@ -155,6 +163,7 @@ function currentCloudPayload() {
 
 async function pushCloudSaveNow() {
   if (!cloudSyncAvailable() || !state) return false;
+  if (!cloudInitialReconcileComplete) { cloudDirtyWhileOffline = true; return false; }
   if (!navigator.onLine) {
     cloudDirtyWhileOffline = true;
     updateCloudStatusLabel("offline");
@@ -191,6 +200,7 @@ async function pushCloudSaveNow() {
 
 function scheduleCloudSync(delay = CLOUD_SYNC_DEBOUNCE_MS) {
   if (!cloudSyncAvailable() || !state) return;
+  if (!cloudInitialReconcileComplete) { cloudDirtyWhileOffline = true; return; }
   if (!navigator.onLine) { cloudDirtyWhileOffline = true; updateCloudStatusLabel("offline"); return; }
   window.clearTimeout(cloudSyncTimer);
   cloudSyncTimer = window.setTimeout(() => { cloudSyncTimer = null; pushCloudSaveNow(); }, delay);
@@ -203,14 +213,73 @@ async function flushCloudSync() {
 
 async function bootstrapCloudSyncAfterGameInit() {
   if (!cloudSyncAvailable()) return;
-  if (window.RPG_GYM_UPLOAD_LOCAL_AFTER_BOOT) {
-    window.RPG_GYM_UPLOAD_LOCAL_AFTER_BOOT = false;
-    await pushCloudSaveNow();
+  if (!navigator.onLine) {
+    cloudDirtyWhileOffline = true;
+    updateCloudStatusLabel("offline");
+    return;
   }
-  updateCloudStatusLabel(navigator.onLine ? "synced" : "offline");
+
+  updateCloudStatusLabel("syncing");
+  try {
+    const userId = authSession.user.id;
+    const data = await fetchCloudSave(userId);
+    const local = cloudBootLocalSnapshot || getLocalSaveSnapshot();
+    const localTs = localSnapshotTimestamp(local);
+    const cloudTs = cloudTimestamp(data);
+    const meta = readCloudMeta(userId);
+
+    if (!data) {
+      cloudInitialReconcileComplete = true;
+      cloudBootLocalSnapshot = null;
+      if (local.game || local.diet) await pushCloudSaveNow();
+      else updateCloudStatusLabel("synced");
+      return;
+    }
+
+    cloudLastServerUpdatedAt = data.updated_at || null;
+
+    // Nuvem vence em empate ou quando é mais recente. O reload só ocorre uma vez
+    // para a mesma versão de nuvem, evitando ciclos de inicialização.
+    if (cloudTs + CLOUD_TIME_TOLERANCE_MS >= localTs) {
+      const alreadyApplied = meta.lastAppliedCloudAt === data.updated_at;
+      writeCloudMeta({
+        lastSyncedAt: data.updated_at,
+        lastServerUpdatedAt: data.updated_at,
+        resolution: "cloud-auto",
+        lastAppliedCloudAt: data.updated_at
+      }, userId);
+
+      if (!alreadyApplied && persistCloudSnapshotLocally(data)) {
+        cloudInitialReconcileComplete = true;
+        cloudBootLocalSnapshot = null;
+        updateCloudStatusLabel("synced");
+        window.location.reload();
+        return;
+      }
+
+      cloudInitialReconcileComplete = true;
+      cloudBootLocalSnapshot = null;
+      cloudDirtyWhileOffline = false;
+      updateCloudStatusLabel("synced");
+      return;
+    }
+
+    // O estado local já era mais novo antes do boot. Só agora liberamos upload.
+    cloudInitialReconcileComplete = true;
+    cloudBootLocalSnapshot = null;
+    writeCloudMeta({ resolution: "local-newer-auto" }, userId);
+    await pushCloudSaveNow();
+  } catch (error) {
+    console.warn("Não foi possível concluir a reconciliação inicial com a nuvem.", error);
+    cloudInitialReconcileComplete = true;
+    cloudBootLocalSnapshot = null;
+    cloudDirtyWhileOffline = true;
+    updateCloudStatusLabel("error");
+  }
 }
 
 async function reconcileCloudAfterReconnect() {
+  if (!cloudInitialReconcileComplete) return bootstrapCloudSyncAfterGameInit();
   if (cloudReconnectInFlight) return cloudReconnectInFlight;
   if (!cloudSyncAvailable() || !navigator.onLine) return false;
 
@@ -291,7 +360,7 @@ window.addEventListener("offline", () => {
 });
 
 Object.assign(window, {
-  preloadCloudSaveForUser, consumePendingCloudGame, consumePendingCloudDiet,
+  preloadCloudSaveForUser, consumePendingCloudGame, consumePendingCloudDiet, prepareCloudBootstrapSnapshot,
   scheduleCloudSync, flushCloudSync, bootstrapCloudSyncAfterGameInit,
   reconcileCloudAfterReconnect, updateCloudStatusLabel
 });

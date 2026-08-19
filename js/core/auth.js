@@ -478,7 +478,7 @@ async function handleAuthenticatedSession(session) {
       renderCloudTutorial();
       return;
     }
-    if (typeof preloadCloudSaveForUser === "function") await preloadCloudSaveForUser();
+    if (typeof prepareCloudBootstrapSnapshot === "function") prepareCloudBootstrapSnapshot();
     enterGameFromAuth();
   } catch (error) {
     console.error("Falha ao carregar perfil Supabase", error);
@@ -685,7 +685,7 @@ async function completeCloudTutorial() {
       .single();
     if (error) throw error;
     authProfile = data;
-    if (typeof preloadCloudSaveForUser === "function") await preloadCloudSaveForUser();
+    if (typeof prepareCloudBootstrapSnapshot === "function") prepareCloudBootstrapSnapshot();
     enterGameFromAuth();
   } catch (error) {
     showAuthMessage(authFriendlyError(error), "error");
