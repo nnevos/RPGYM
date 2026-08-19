@@ -29,7 +29,7 @@ function claimLegacyStorage(baseKey, scopedKey) {
 function getGameStorageKey() {
   return getScopedStorageKey(STORAGE_KEY);
 }
-const APP_VERSION = "0.6.5";
+const APP_VERSION = "0.6.6";
 const MAX_LEVEL = 50;
 const MILESTONE_LEVELS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 const DAY_MS = 86_400_000;

@@ -427,3 +427,44 @@ input, select { color: var(--text); }
   .profile-settings-modal { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
   .main-content { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
 }
+
+/* v0.6.6 - Dieta mobile: cabeçalho e busca fixos; somente resultados rolam acima do teclado */
+.food-picker-modal {
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto auto auto minmax(0, 1fr) !important;
+}
+.food-result-list {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 720px) {
+  .food-picker-overlay {
+    align-items: start !important;
+    justify-items: center !important;
+    place-items: start center !important;
+  }
+  .food-picker-modal {
+    width: 100% !important;
+    height: var(--food-picker-viewport-height, 100dvh) !important;
+    max-height: var(--food-picker-viewport-height, 100dvh) !important;
+    border-radius: 0 !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+  }
+  .food-picker-modal > header,
+  .food-search-box,
+  .food-picker-meta {
+    flex-shrink: 0;
+  }
+  .food-search-box {
+    margin-bottom: 8px !important;
+  }
+  .food-result-list {
+    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    scroll-padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}

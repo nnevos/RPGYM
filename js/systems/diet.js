@@ -120,16 +120,39 @@ function normalizeSearchText(value) {
   return runtimeSearchText(value);
 }
 
+let foodPickerViewportBound = false;
+
+function syncFoodPickerViewportHeight() {
+  const overlay = document.getElementById("foodPickerOverlay");
+  if (!overlay || overlay.hidden) return;
+  const viewport = window.visualViewport;
+  const height = Math.max(320, Math.round(viewport?.height || window.innerHeight));
+  overlay.style.setProperty("--food-picker-viewport-height", `${height}px`);
+}
+
+function bindFoodPickerViewport() {
+  if (foodPickerViewportBound) return;
+  foodPickerViewportBound = true;
+  window.visualViewport?.addEventListener("resize", syncFoodPickerViewportHeight, { passive:true });
+  window.visualViewport?.addEventListener("scroll", syncFoodPickerViewportHeight, { passive:true });
+  window.addEventListener("resize", syncFoodPickerViewportHeight, { passive:true });
+}
+
 function openFoodPicker(mealKey) {
   foodPickerMealKey = mealKey || "breakfast";
   const overlay=document.getElementById("foodPickerOverlay"); if(!overlay) return;
+  bindFoodPickerViewport();
   overlay.hidden=false; document.body.classList.add("modal-open");
+  syncFoodPickerViewportHeight();
   const search=document.getElementById("foodSearch"); if(search) search.value="";
-  renderFoodSearch(); window.setTimeout(()=>search?.focus(),30);
+  const results=document.getElementById("foodResultList"); if(results) results.scrollTop=0;
+  renderFoodSearch();
+  window.setTimeout(()=>{ search?.focus({preventScroll:true}); syncFoodPickerViewportHeight(); },30);
 }
 
 function closeFoodPicker() {
-  const overlay=document.getElementById("foodPickerOverlay"); if(overlay) overlay.hidden=true;
+  const overlay=document.getElementById("foodPickerOverlay");
+  if(overlay) { overlay.hidden=true; overlay.style.removeProperty("--food-picker-viewport-height"); }
   document.body.classList.remove("modal-open");
 }
 
